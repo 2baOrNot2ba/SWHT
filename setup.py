@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import numpy as np
 import os, sys, glob
 
-__version__ = '0.1.2' #this needs to be kept up to date with SWHT/__init__.py
+__version__ = '0.10.0' #this needs to be kept up to date with SWHT/__init__.py
 
 setup(name = 'SWHT',
     version = __version__,
@@ -13,7 +13,7 @@ setup(name = 'SWHT',
     url='https://github.com/griffinfoster/SWHT',
     platforms = ['*nix'],
     license = 'GPL',
-    requires = ['distutils','numpy','scipy','matplotlib','ephem'],
+    requires = ['numpy', 'scipy', 'matplotlib', 'ephem', 'healpy'],
     provides = ['SWHT'],
     packages = ['SWHT'],
     include_dirs = [np.get_include()],
@@ -25,7 +25,7 @@ setup(name = 'SWHT',
         'Environment :: Console',
         'Natural Language :: English',
         'Operating System :: POSIX :: Linux',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3.8',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: GNU General Public License (GPL)',
         'Topic :: Scientific/Engineering :: Astronomy',

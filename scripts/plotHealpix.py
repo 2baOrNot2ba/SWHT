@@ -61,7 +61,7 @@ if __name__ == '__main__':
     w = None
     coordSys = 'C' # default to celestial coordinates
     for fid,fn in enumerate(args):
-        print 'Opening: %s (%i/%i)'%(fn, fid+1, len(args))
+        print('Opening: %s (%i/%i)'%(fn, fid+1, len(args)))
         hpMap = hp.read_map(fn, field=None, h=True)
         hdr = hpMap[-1]
         if len(hpMap)==2: # no weight map
@@ -80,11 +80,11 @@ if __name__ == '__main__':
         coord_proj = coordSys + opts.proj.upper()
     else: # override the projection
         coord_proj = opts.proj.upper()
-    print 'Using coordinate projection: %s --> %s'%(coord_proj[0], coord_proj[1])
+    print('Using coordinate projection: %s --> %s'%(coord_proj[0], coord_proj[1]))
 
     if w is not None: m /= w # divide by the pixel weights
     
-    print 'Map :: min=%f :: max=%f'%(np.nanmin(m), np.nanmax(m))
+    print('Map :: min=%f :: max=%f'%(np.nanmin(m), np.nanmax(m)))
 
     ma_m = np.ma.masked_array(m, np.isnan(m))
 

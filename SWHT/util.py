@@ -57,7 +57,7 @@ def convert_arg_range(arg):
     arg = arg.split(',')
     outList = []
     for aa in arg:
-        rr = map(int, aa.split('_'))
+        rr = list(map(int, aa.split('_')))
         if len(rr)==1: outList.append(rr[0])
         elif len(rr)==2:
             outList.extend(range(rr[0], rr[1]+1))
@@ -203,18 +203,18 @@ def array2almVec(arr):
 import numpy as np
 
 if __name__ == '__main__':
-    print 'Running test cases'
+    print('Running test cases')
 
     [theta, phi] = np.meshgrid(np.linspace(0, np.pi, num=128, endpoint=False), np.linspace(0, 2.*np.pi, num=128, endpoint=False))
     X, Y, Z = sph2cart(theta, phi)
     r0, phi0, theta0 = cart2sph(X, Y, Z)
 
-    print np.allclose(theta, theta0)
-    print np.allclose(phi, phi0)
+    print(np.allclose(theta, theta0))
+    print(np.allclose(phi, phi0))
 
     aa = np.arange(5*5).reshape(5,5)
-    print aa
-    print vectorize(aa)
+    print(aa)
+    print(vectorize(aa))
 
     from matplotlib import pyplot as plt
     plt.subplot(221)
@@ -231,5 +231,5 @@ if __name__ == '__main__':
     plt.colorbar()
     plt.show()
 
-    print 'Made it through without any errors.'
+    print('Made it through without any errors.')
 

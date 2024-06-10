@@ -48,23 +48,23 @@ def getLofarStation(name=None, affn=None, aafn=None, deltas=None, noarrays=True)
         confValid = True
 
     if nameValid is False and confValid is False: #no valid information for forming station
-        print 'ERROR: input station name or configuration files are no good, exiting'
+        print('ERROR: input station name or configuration files are no good, exiting')
         exit()
 
     #favour the input config files over the station name and repo config files
     if deltas is not None: dfn = deltas
     if confValid:
         stationName = affn.split('/')[-1].split('-')[0]
-        print 'Station Name:', stationName
-        print 'AntennaArray:', aafn
-        print 'AntennaField:', affn
-        print 'iHBADeltas:', dfn
+        print('Station Name:', stationName)
+        print('AntennaArray:', aafn)
+        print('AntennaField:', affn)
+        print('iHBADeltas:', dfn)
         return lofarStation(stationName, affn, aafn, deltas=dfn)
     elif nameValid:
-        print 'Station Name:', name
-        print 'AntennaArray:', repoaafn
-        print 'AntennaField:', repoaffn
-        print 'iHBADeltas:', dfn
+        print('Station Name:', name)
+        print('AntennaArray:', repoaafn)
+        print('AntennaField:', repoaffn)
+        print('iHBADeltas:', dfn)
         return lofarStation(name, repoaffn, repoaafn, deltas=dfn)
 
 class lofarStation():
@@ -95,7 +95,7 @@ def getHBADeltas(fn):
         if l=='' or l.startswith('#'): continue
         cleanStr += " ".join(l.split())+" "
     cleanStr = " ".join(cleanStr.split())
-    return np.array(map(float, cleanStr.split(' ')[5:-1])).reshape((16, 3))
+    return np.array(list(map(float, cleanStr.split(' ')[5:-1]))).reshape((16, 3))
 
 class antennaField():
     def __init__(self, name, fn):
@@ -122,7 +122,7 @@ class antennaField():
             infoStr = infoStr.strip()
             if infoStr.lower().startswith('normal'):
                 name, mode, length = infoStr.split(' ')
-                self.normVec[mode] = np.array(map(float, dataStr.strip().split(' ')))
+                self.normVec[mode] = np.array(list(map(float, dataStr.strip().split(' '))))
             elif infoStr.lower().startswith('rotation'):
                 name, mode, l0, fill, l1 = infoStr.split(' ')
                 if len(l0) == 1: # '3' Old conf format
@@ -130,21 +130,21 @@ class antennaField():
                 else: # '(0, 2)' New conf format
                     l0 = l0.split(',')[-1][:-1]
                     l1 = l1.split(',')[-1][:-1]
-                    self.rotMatrix[mode] = np.array(map(float, dataStr.strip().split(' '))).reshape((int(l0) + 1, int(l1) + 1))
+                    self.rotMatrix[mode] = np.array(list(map(float, dataStr.strip().split(' ')))).reshape((int(l0) + 1, int(l1) + 1))
             elif infoStr.lower().startswith('lba') or infoStr.lower().startswith('hba'):
                 mode,length = infoStr.split(' ')
-                self.location[mode] = np.array(map(float, dataStr.strip().split(' ')))
+                self.location[mode] = np.array(list(map(float, dataStr.strip().split(' '))))
                 lastMode = mode
             else: #antenna positions
                 l0, f0, l1, f1, l2 = infoStr.split(' ')
-                print l0, f0, l1, f1, l2
+                print(l0, f0, l1, f1, l2)
                 if len(l0) < 3: # '96' Old conf format
                     self.antpos[lastMode] = np.array(map(float, dataStr.strip().split(' '))).reshape((int(l0), int(l1), int(l2)))
                 else: # '(0, 95)' New conf format
                     l0 = l0.split(',')[-1][:-1]
                     l1 = l1.split(',')[-1][:-1]
                     l2 = l2.split(',')[-1][:-1]
-                    self.antpos[lastMode] = np.array(map(float, dataStr.strip().split(' '))).reshape((int(l0) + 1, int(l1) + 1, int(l2) + 1))
+                    self.antpos[lastMode] = np.array(list(map(float, dataStr.strip().split(' ')))).reshape((int(l0) + 1, int(l1) + 1, int(l2) + 1))
         #convert antenna positions to local horizon coordinate system
         for mode in self.antpos:
             #a bit hacky, but some stations use HBA0 and HBA1 for the rotation matrix and HBA for the antenna postions
@@ -224,7 +224,7 @@ def readCalTable(fn, nants=96, nsbs=512, npols=2):
         while not 'HeaderStop' in line:
             line = fh.readline()
     else:  # no header present, seek to starting position
-        file.seek(0)
+        fh.seek(0)
 
     fmt = str(nants * npols * nsbs * 2) + 'd'
     sz = struct.calcsize(fmt)
@@ -237,12 +237,12 @@ def readCalTable(fn, nants=96, nsbs=512, npols=2):
     return antGains
 
 if __name__ == '__main__':
-    print 'Running test cases'
+    print('Running test cases')
 
-    print 'Using data from this directory:', STATICMETADATA
+    print('Using data from this directory:', STATICMETADATA)
 
     deltas = getHBADeltas(STATICMETADATA + 'SE607-iHBADeltas.conf')
-    print deltas
+    print(deltas)
 
     #antfield = antennaField('CS013', STATICMETADATA + 'CS013-AntennaField.conf')
     #antfield = antennaField('RS208', STATICMETADATA + 'RS208-AntennaField.conf')
@@ -252,13 +252,13 @@ if __name__ == '__main__':
     #antArrys = antennaArrays('RS208', STATICMETADATA + 'RS208-AntennaArrays.conf')
     #antArrys = antennaArrays('UK608', STATICMETADATA + 'UK608-AntennaArrays.conf')
     CS013 = lofarStation('CS013', STATICMETADATA + 'CS013-AntennaField.conf', STATICMETADATA + 'CS013-AntennaArrays.conf')
-    print CS013.name
+    print(CS013.name)
     RS208 = lofarStation('RS208', STATICMETADATA + 'RS208-AntennaField.conf', STATICMETADATA + 'RS208-AntennaArrays.conf')
-    print RS208.name
+    print(RS208.name)
     UK608 = lofarStation('UK608', STATICMETADATA + 'UK608-AntennaField.conf', STATICMETADATA + 'UK608-AntennaArrays.conf')
-    print UK608.name
+    print(UK608.name)
     SE607 = lofarStation('SE607', STATICMETADATA + 'SE607-AntennaField.conf')
-    print SE607.name
+    print(SE607.name)
 
     CS002 = lofarStation('CS002', STATICMETADATA + 'CS002-AntennaField.conf', STATICMETADATA + 'CS002-AntennaArrays.conf')
     CS003 = lofarStation('CS003', STATICMETADATA + 'CS003-AntennaField.conf', STATICMETADATA + 'CS003-AntennaArrays.conf')
@@ -267,10 +267,10 @@ if __name__ == '__main__':
     #print applyRotMatrix(CS003,rotMat,'LBA')
     #print applyRotMatrix(CS013,rotMat,'LBA')
     #print applyRotMatrix(RS208,rotMat,'LBA')
-    print relativeStationOffset(CS002,CS003)
-    print relativeStationOffset(CS002,CS013)
-    print relativeStationOffset(CS002,RS208)
-    print relativeStationOffset(CS002,UK608)
+    print(relativeStationOffset(CS002,CS003))
+    print(relativeStationOffset(CS002,CS013))
+    print(relativeStationOffset(CS002,RS208))
+    print(relativeStationOffset(CS002,UK608))
 
     #print '\n'
     #aa=CS002.antField.location['LBA']
@@ -286,10 +286,10 @@ if __name__ == '__main__':
     getLofarStation(affn= STATICMETADATA + 'SE607-AntennaField.conf', aafn= STATICMETADATA + 'SE607-AntennaArrays.conf', deltas= STATICMETADATA + 'SE607-iHBADeltas.conf')
 
     KAIRA = getLofarStation(name='KAIRA')
-    print KAIRA.antField.antpos['LBA'].shape
+    print(KAIRA.antField.antpos['LBA'].shape)
 
     IE613 = getLofarStation(name='IE613')
-    print IE613.antField.antpos['LBA'].shape
+    print(IE613.antField.antpos['LBA'].shape)
 
-    print 'Made it through without any errors.'
+    print('Made it through without any errors.')
 

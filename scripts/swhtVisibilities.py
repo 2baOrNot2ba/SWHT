@@ -97,7 +97,7 @@ if __name__ == '__main__':
     ####################
     visFiles = args # filenames to image
     for vid,visFn in enumerate(visFiles):
-        print 'Using %s (%i/%i)'%(visFn, vid+1, len(visFiles))
+        print('Using %s (%i/%i)'%(visFn, vid+1, len(visFiles)))
         fDict = SWHT.fileio.parse(visFn, fmt=dataFmt)
 
         # Pull out the visibility data in a (u,v,w) format
@@ -159,7 +159,7 @@ if __name__ == '__main__':
             uvwComb = np.concatenate((uvwComb, uvw), axis=0)
 
         elif fDict['fmt']=='pkl':
-            print 'Loading Image Coefficients file:', visFn
+            print('Loading Image Coefficients file:', visFn)
             coeffDict = SWHT.fileio.readCoeffPkl(visFn)
             imgCoeffs = coeffDict['coeffs']
             LSTangle = coeffDict['lst']
@@ -168,7 +168,7 @@ if __name__ == '__main__':
             decomp = False
 
         else:
-            print 'ERROR: unknown data format, exiting'
+            print('ERROR: unknown data format, exiting')
             exit()
 
     if opts.uvwplot: # display the total UVW coverage
@@ -184,24 +184,24 @@ if __name__ == '__main__':
         maxBl = np.max(blLen) # maximum baseline length (in meters)
         meanWl = cc / np.mean(freqs) # mean observing wavelength
         maxRes = 1.22 * meanWl / maxBl
-        print 'MAXIMUM RES: %f (radians) %f (deg)'%(maxRes, maxRes * (180. / np.pi))
+        print('MAXIMUM RES: %f (radians) %f (deg)'%(maxRes, maxRes * (180. / np.pi)))
         idealLmax = int(np.pi / maxRes)
-        print 'SUGGESTED L_MAX: %i, %i (oversample 3), %i (oversample 5)'%(idealLmax, idealLmax*3, idealLmax*5)
+        print('SUGGESTED L_MAX: %i, %i (oversample 3), %i (oversample 5)'%(idealLmax, idealLmax*3, idealLmax*5))
 
         if opts.psf:
            visComb = np.ones_like(visComb) 
 
-        print 'AUTO-CORRELATIONS:', opts.autos
+        print('AUTO-CORRELATIONS:', opts.autos)
         if not opts.autos: # remove auto-correlations
             autoIdx = np.argwhere(uvwComb[:,0]**2. + uvwComb[:,1]**2. + uvwComb[:,2]**2. == 0.)
             visComb[:,autoIdx] = 0.
 
         # prepare for SWHT
-        print 'Performing Spherical Wave Harmonic Transform'
-        print 'LMAX:', opts.lmax
+        print('Performing Spherical Wave Harmonic Transform')
+        print('LMAX:', opts.lmax)
 
         polMode = opts.polMode.upper()
-        print 'Polarization Mode:', polMode
+        print('Polarization Mode:', polMode)
         if polMode=='I': polVisComb = visComb[0] + visComb[3]
         elif polMode=='Q': polVisComb = visComb[0] - visComb[3]
         elif polMode=='U': polVisComb = visComb[1] + visComb[2]
@@ -234,38 +234,38 @@ if __name__ == '__main__':
         fov = opts.fov * (np.pi/180.) # Field of View in radians
         px = [opts.pixels, opts.pixels]
         res = fov/px[0] # pixel resolution
-        print 'Generating 2D Hemisphere Image of size (%i, %i)'%(px[0], px[1])
-        print 'Resolution(deg):', res*180./np.pi
+        print('Generating 2D Hemisphere Image of size (%i, %i)'%(px[0], px[1]))
+        print('Resolution(deg):', res*180./np.pi)
         #img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=[0., 0.]) #TODO: 0 because the positions have already been rotated to the zenith RA of the first snapshot, if multiple snaphsots this needs to be reconsidered
         img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=[float(LSTangle), obsLat]) #TODO: 0 because the positions have already been rotated to the zenith RA of the first snapshot, if multiple snaphsots this needs to be reconsidered
         #img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=[0., float(obsLat)]) #TODO: 0 because the positions have already been rotated to the zenith RA of the first snapshot, if multiple snaphsots this needs to be reconsidered
         fig, ax = SWHT.display.disp2D(img, dmode='abs', cmap='jet')
 
         # save complex image to pickle file
-        print 'Writing image to file %s ...'%outFn,
+        print('Writing image to file %s ...'%outFn, end=' ')
         SWHT.fileio.writeSWHTImgPkl(outFn, img, fDict, mode='2D')
-        print 'done'
+        print('done')
 
     elif opts.imageMode.startswith('3'): # Make a 3D equal stepped image
-        print 'Generating 3D Image with %i steps in theta and %i steps in phi'%(opts.pixels, opts.pixels)
+        print('Generating 3D Image with %i steps in theta and %i steps in phi'%(opts.pixels, opts.pixels))
         img, phi, theta = SWHT.swht.make3Dimage(imgCoeffs, dim=[opts.pixels, opts.pixels])
         fig, ax = SWHT.display.disp3D(img, phi, theta, dmode='abs', cmap='jet')
 
         # save complex image to pickle file
-        print 'Writing image to file %s ...'%outFn,
+        print('Writing image to file %s ...'%outFn, end=' ')
         SWHT.fileio.writeSWHTImgPkl(outFn, [img, phi, theta], fDict, mode='3D')
-        print 'done'
+        print('done')
 
     elif opts.imageMode.startswith('heal'): # plot healpix and save healpix file using the opts.pkl name
-        print 'Generating HEALPix Image with %i NSIDE'%(opts.pixels)
+        print('Generating HEALPix Image with %i NSIDE'%(opts.pixels))
         # use the healpy.alm2map function as it is much faster, there is a ~1% difference between the 2 functions, this is probably due to the inner workings of healpy
         #m = SWHT.swht.makeHEALPix(imgCoeffs, nside=opts.pixels) # TODO: a rotation issue
         m = hp.alm2map(SWHT.util.array2almVec(imgCoeffs), opts.pixels) # TODO: a rotation issue
 
         # save complex image to HEALPix file
-        print 'Writing image to file %s ...'%outFn,
+        print('Writing image to file %s ...'%outFn, end=' ')
         hp.write_map(outFn, m.real, coord='C') # only writing the real component, this should be fine, maybe missing some details, but you know, the sky should be real.
-        print 'done'
+        print('done')
     
     elif opts.imageMode.startswith('coeff'): # plot the complex coefficients
         fig, ax = SWHT.display.dispCoeffs(imgCoeffs, zeroDC=True, vis=False)

@@ -42,11 +42,11 @@ if __name__ == '__main__':
     #TODO: can add together image coefficients, just need to consider the meta data setup
     coeffFiles = args # filenames to image
     for cid,coeffFn in enumerate(coeffFiles):
-        print 'Using %s (%i/%i)'%(coeffFn, cid+1, len(coeffFiles))
+        print('Using %s (%i/%i)'%(coeffFn, cid+1, len(coeffFiles)))
         fDict = SWHT.fileio.parse(coeffFn)
 
         if fDict['fmt']=='pkl':
-            print 'Loading Image Coefficients file:', coeffFn
+            print('Loading Image Coefficients file:', coeffFn)
             coeffDict = SWHT.fileio.readCoeffPkl(coeffFn)
             iImgCoeffs = coeffDict['coeffs']
             LSTangle = coeffDict['lst']
@@ -54,7 +54,7 @@ if __name__ == '__main__':
             obsLat = coeffDict['phs'][1]
             decomp = False
         else:
-            print 'ERROR: unknown data format, exiting'
+            print('ERROR: unknown data format, exiting')
             exit()
 
     ####################
@@ -70,36 +70,36 @@ if __name__ == '__main__':
         fov = opts.fov * (np.pi/180.) # Field of View in radians
         px = [opts.pixels, opts.pixels]
         res = fov/px[0] # pixel resolution
-        print 'Generating 2D Hemisphere Image of size (%i, %i)'%(px[0], px[1])
-        print 'Resolution(deg):', res*180./np.pi
+        print('Generating 2D Hemisphere Image of size (%i, %i)'%(px[0], px[1]))
+        print('Resolution(deg):', res*180./np.pi)
         img = SWHT.swht.make2Dimage(iImgCoeffs, res, px, phs=[0., float(obsLat)]) #TODO: 0 because the positions have already been rotated to the zenith RA of the first snapshot, if multiple snaphsots this needs to be reconsidered
         fig, ax = SWHT.display.disp2D(img, dmode='abs', cmap='jet')
 
         # save complex image to pickle file
-        print 'Writing image to file %s ...'%outFn,
+        print('Writing image to file %s ...'%outFn, end=' ')
         SWHT.fileio.writeSWHTImgPkl(outFn, img, fDict, mode='2D')
-        print 'done'
+        print('done')
 
     elif opts.imageMode.startswith('3'): # Make a 3D equal stepped image
-        print 'Generating 3D Image with %i steps in theta and %i steps in phi'%(opts.pixels, opts.pixels)
+        print('Generating 3D Image with %i steps in theta and %i steps in phi'%(opts.pixels, opts.pixels))
         img, phi, theta = SWHT.swht.make3Dimage(iImgCoeffs, dim=[opts.pixels, opts.pixels])
         fig, ax = SWHT.display.disp3D(img, phi, theta, dmode='abs', cmap='jet')
 
         # save complex image to pickle file
-        print 'Writing image to file %s ...'%outFn,
+        print('Writing image to file %s ...'%outFn, end=' ')
         SWHT.fileio.writeSWHTImgPkl(outFn, [img, phi, theta], fDict, mode='3D')
-        print 'done'
+        print('done')
 
     elif opts.imageMode.startswith('heal'): # plot healpix and save healpix file using the opts.pkl name
-        print 'Generating HEALPix Image with %i NSIDE'%(opts.pixels)
+        print('Generating HEALPix Image with %i NSIDE'%(opts.pixels))
         # use the healpy.alm2map function as it is much faster, there is a ~1% difference between the 2 functions, this is probably due to the inner workings of healpy
         #m = SWHT.swht.makeHEALPix(iImgCoeffs, nside=opts.pixels)
         m = hp.alm2map(SWHT.util.array2almVec(iImgCoeffs), opts.pixels)
 
         # save complex image to HEALPix file
-        print 'Writing image to file %s ...'%outFn,
+        print('Writing image to file %s ...'%outFn, end=' ')
         hp.write_map(outFn, np.abs(m), coord='C') #TODO: should this be abs or real?
-        print 'done'
+        print('done')
     
     elif opts.imageMode.startswith('coeff'): # plot the complex coefficients
         fig, ax = SWHT.display.dispCoeffs(iImgCoeffs, zeroDC=True, vis=opts.viscoeffs)

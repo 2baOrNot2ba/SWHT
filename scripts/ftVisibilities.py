@@ -12,7 +12,7 @@ import SWHT
 try:
     import casacore.tables as tbls
 except ImportError:
-    print 'Warning: could not import casacore.tables, will not be able to read measurement sets'
+    print('Warning: could not import casacore.tables, will not be able to read measurement sets')
 
 #import scipy.constants
 #cc = scipy.constants.c
@@ -87,7 +87,7 @@ if __name__ == '__main__':
     ####################
     visFiles = args # filenames to image
     for vid,visFn in enumerate(visFiles):
-        print 'Using %s (%i/%i)'%(visFn, vid+1, len(visFiles))
+        print('Using %s (%i/%i)'%(visFn, vid+1, len(visFiles)))
         fDict = SWHT.fileio.parse(visFn, fmt=dataFmt)
 
         # Pull out the visibility data in a (u,v,w) format
@@ -149,21 +149,21 @@ if __name__ == '__main__':
             uvwComb = np.concatenate((uvwComb, uvw), axis=0)
 
         else:
-            print 'ERROR: unknown data format, exiting'
+            print('ERROR: unknown data format, exiting')
             exit()
 
-    print 'AUTO-CORRELATIONS:', opts.autos
+    print('AUTO-CORRELATIONS:', opts.autos)
     if not opts.autos: # remove auto-correlations
         autoIdx = np.argwhere(uvwComb[:,0]**2. + uvwComb[:,1]**2. + uvwComb[:,2]**2. == 0.)
         visComb[:,autoIdx] = 0.
 
     # prepare for Fourier transform
-    print 'Performing Fourier Transform'
+    print('Performing Fourier Transform')
     pixels = opts.pixels
     px = [pixels,pixels]
     fov = opts.fov * (np.pi/180.) #Field of View in radians
     res = fov / px[0] #pixel resolution
-    print 'Resolution(deg):', res*180./np.pi
+    print('Resolution(deg):', res*180./np.pi)
 
     # convert uvw to wavelength, reduce dimensions of uvw and vis arrays for Fourier Transform
     visComb = np.reshape(visComb, (4, visComb.shape[1]*visComb.shape[2])) # 4 pols x (number of samples * number of subbands)
@@ -199,13 +199,13 @@ if __name__ == '__main__':
 
     # perform DFT or FFT
     if opts.dft:
-        print 'DFT'
+        print('DFT')
         xxIm = SWHT.ft.dftImage(visComb[0], uvwComb, px, res, mask=False, rescale=False, stokes=False)
         xyIm = SWHT.ft.dftImage(visComb[1], uvwComb, px, res, mask=False, rescale=False, stokes=False)
         yxIm = SWHT.ft.dftImage(visComb[2], uvwComb, px, res, mask=False, rescale=False, stokes=False)
         yyIm = SWHT.ft.dftImage(visComb[3], uvwComb, px, res, mask=False, rescale=False, stokes=False)
     else:
-        print 'FFT'
+        print('FFT')
         conv = opts.conv #rotate about z-axisv
         xxIm = SWHT.ft.fftImage(visComb[0], uvwComb, px, res, mask=False, wgt=opts.weighting, conv=conv)
         xyIm = SWHT.ft.fftImage(visComb[1], uvwComb, px, res, mask=False, wgt=opts.weighting, conv=conv)
@@ -217,9 +217,10 @@ if __name__ == '__main__':
     else: outPklFn = opts.pkl
     if opts.dft: fttype = 'dft'
     else: fttype = opts.conv
-    print 'Writing image to file %s ...'%outPklFn,
+    print(outPklFn, end='\n')
+    print('Writing image to file %s ...' % outPklFn, end=' ')
     SWHT.fileio.writeImgPkl(outPklFn, np.array([xxIm,xyIm,yxIm,yyIm]), fDict, res=res, fttype=fttype, imtype='complex')
-    print 'done'
+    print('done')
     
     #display stokes plots
     if not opts.nodisplay or not (opts.savefig is None):

@@ -19,7 +19,7 @@ def disp2D(img, dmode='dB', cmap='jet'):
     elif dmode.startswith('imag'): img = img.imag
     elif dmode.startswith('phase'): img = np.angle(img)
     else:
-        print 'WARNING: Unknown data mode, defaulting to absolute value'
+        print('WARNING: Unknown data mode, defaulting to absolute value')
         img = np.abs(img)
 
     img = np.fliplr(img)
@@ -117,7 +117,7 @@ def disp3D(img, phi, theta, dmode='abs', cmap='jet'):
     elif dmode.startswith('imag'): img = img.imag
     elif dmode.startswith('phase'): img = np.angle(img)
     else:
-        print 'WARNING: Unknown data mode, defaulting to absolute value'
+        print('WARNING: Unknown data mode, defaulting to absolute value')
         img = np.abs(img)
 
     #X = np.cos(theta-(np.pi/2.)) * np.cos(phi)

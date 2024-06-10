@@ -56,13 +56,13 @@ if __name__ == '__main__':
     opts, args = o.parse_args(sys.argv[1:])
 
     if opts.imap is None:
-        print "ERROR: no input HEALPIX map or coefficient file set with -i/--imap option"
+        print("ERROR: no input HEALPIX map or coefficient file set with -i/--imap option")
         exit()
     elif opts.imap.endswith('.hpx'): #input HEALPIX map, decompose into spherical harmonic coefficients
         #Get HEALPIX map
         m = None
         w = None
-        print 'Opening:', opts.imap
+        print('Opening:', opts.imap)
         hpMap = hp.read_map(opts.imap, field=None, h=True)
         if len(hpMap)==2: #no weight map
             m, hdr = hpMap
@@ -70,16 +70,16 @@ if __name__ == '__main__':
             m, w, hdr = hpMap
 
         if w is not None: m /= w #divide by the pixel weights
-        print 'Map :: min=%f :: max=%f'%(np.nanmin(m), np.nanmax(m))
+        print('Map :: min=%f :: max=%f'%(np.nanmin(m), np.nanmax(m)))
 
         #Convert HEALPIX map into Alm spherical harmonics coefficients
-        print 'Generating Spherical Harmonic Coefficients from map...',
+        print('Generating Spherical Harmonic Coefficients from map...', end=' ')
         alms = hp.sphtfunc.map2alm(m, lmax=opts.lmax, mmax=opts.lmax)
         blm = SWHT.util.almVec2array(alms, opts.lmax)
-        print 'done'
+        print('done')
 
     elif opts.imap.endswith('.pkl'): #SWHT coefficient pickle
-        print 'Loading Image Coefficients file:', opts.imap
+        print('Loading Image Coefficients file:', opts.imap)
         coeffDict = SWHT.fileio.readCoeffPkl(opts.imap)
         blm = coeffDict['coeffs']
 
@@ -93,13 +93,13 @@ if __name__ == '__main__':
 
     #TODO: test
     if args==[]: #if not using measurement set or LOFAR data set as a template then try to do a simulation from the input options
-        print 'No input datasets as a template, assuming LOFAR simulation with given input options'
+        print('No input datasets as a template, assuming LOFAR simulation with given input options')
 
         if opts.ts is None:
-            print 'Error: missing a timestamp'
+            print('Error: missing a timestamp')
             exit()
         if lofarStation is None:
-            print 'Error: missing a station'
+            print('Error: missing a station')
             exit()
         if opts.subband is None: #use all subbands for LOFAR, 512 channels
             sbs = np.array(SWHT.util.convert_arg_range('0_511'))
@@ -108,17 +108,17 @@ if __name__ == '__main__':
         ts = datetime.datetime(year=int(dd[:4]), month=int(dd[4:6]), day=int(dd[6:]), hour=int(tt[:2]), minute=int(tt[2:4]), second=int(tt[4:]))
         rcumode = opts.rcumode
 
-        print 'Using Station: %s, RCU Mode: %i, Time: %s, Subbands: '%(lofarStation.name, opts.rcumode, opts.ts), sbs
+        print('Using Station: %s, RCU Mode: %i, Time: %s, Subbands: '%(lofarStation.name, opts.rcumode, opts.ts), sbs)
 
         #longitude and latitude of array
         arr_xyz = lofarStation.antField.location[SWHT.lofarConfig.rcuInfo[rcumode]['array_type']]
         lat, lon, elev = SWHT.ecef.ecef2geodetic(arr_xyz[0], arr_xyz[1], arr_xyz[2], degrees=True)
-        print 'LON(deg):', lon, 'LAT(deg):', lat, 'ELEV(m):', elev
+        print('LON(deg):', lon, 'LAT(deg):', lat, 'ELEV(m):', elev)
 
         #antenna positions
         ants = lofarStation.antField.antpos[SWHT.lofarConfig.rcuInfo[rcumode]['array_type']]
         nants = ants.shape[0]
-        print 'NANTENNAS:', nants
+        print('NANTENNAS:', nants)
         npols = 2
         nantpol = nants * npols
 
@@ -127,7 +127,7 @@ if __name__ == '__main__':
         bw = SWHT.lofarConfig.rcuInfo[rcumode]['bw']
         df = bw/nchan
         freqs = sbs*df + SWHT.lofarConfig.rcuInfo[rcumode]['offset'] + (df/2.) #df/2 to centre the band
-        print 'SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)'
+        print('SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)')
         npols = 2
 
         obs = ephem.Observer() #create an observer at the array location
@@ -138,7 +138,7 @@ if __name__ == '__main__':
         obs.date = ts
         obsLat = float(obs.lat) #radians
         obsLong = float(obs.long) #radians
-        print 'Observatory:', obs
+        print('Observatory:', obs)
 
         #get the UVW and visibilities for the different subbands
         ncorrs = nants*(nants+1)/2
@@ -153,7 +153,7 @@ if __name__ == '__main__':
 
             #in order to accommodate multiple observations/subbands at different times/sidereal times all the positions need to be rotated relative to sidereal time 0
             LSTangle = obs.sidereal_time() #radians
-            print 'LST:',  LSTangle
+            print('LST:',  LSTangle)
             rotAngle = float(LSTangle) - float(obs.long) #adjust LST to that of the Observatory longitutude to make the LST that at Greenwich
             #to be honest, the next two lines change the LST to make the images come out but i haven't worked out the coordinate transforms, so for now these work without justification
             rotAngle += np.pi
@@ -210,13 +210,13 @@ if __name__ == '__main__':
             #Save simulated visibilities to XST file
             #20150915_191137_rcu5_sb60_int10_dur10_xst.dat
             xst_fn = dd + '_' + tt + '_rcu%i'%rcumode + '_sb%i'%sb + '_int%i'%int(opts.int_time) + '_dur%i'%int(opts.int_time) + '_xst.dat.sim'
-            print 'Saving simulated visibilities to', xst_fn
+            print('Saving simulated visibilities to', xst_fn)
             fullCorrMatrix.tofile(xst_fn)
 
     else: #using input files as templates
         visFiles = args
         for vid,visFn in enumerate(visFiles):
-            print 'Simulating visibilities for %s (%i/%i)'%(visFn, vid+1, len(visFiles))
+            print('Simulating visibilities for %s (%i/%i)'%(visFn, vid+1, len(visFiles)))
             fDict = SWHT.fileio.parse(visFn)
 
             #TODO: test
@@ -232,28 +232,28 @@ if __name__ == '__main__':
                 #lon, lat, elev = lofarStation.antArrays.location[SWHT.lofarConfig.rcuInfo[fDict['rcu']]['array_type']]
                 arr_xyz = lofarStation.antField.location[SWHT.lofarConfig.rcuInfo[fDict['rcu']]['array_type']]
                 lat, lon, elev = SWHT.ecef.ecef2geodetic(arr_xyz[0], arr_xyz[1], arr_xyz[2], degrees=True)
-                print 'LON(deg):', lon, 'LAT(deg):', lat, 'ELEV(m):', elev
+                print('LON(deg):', lon, 'LAT(deg):', lat, 'ELEV(m):', elev)
 
                 #antenna positions
                 ants = lofarStation.antField.antpos[SWHT.lofarConfig.rcuInfo[fDict['rcu']]['array_type']]
                 if 'elem' in fDict: #update the antenna positions if there is an element string
                     if lofarStation.deltas is None:
-                        print 'Warning: HBA element string found, but HBADeltas file is missing, your image is probably not going to make sense'
+                        print('Warning: HBA element string found, but HBADeltas file is missing, your image is probably not going to make sense')
                     else:
-                        print 'Updating antenna positions with HBA element deltas'
+                        print('Updating antenna positions with HBA element deltas')
                         for aid in np.arange(ants.shape[0]):
                             delta = lofarStation.deltas[int(fDict['elem'][aid], 16)]
                             delta = np.array([delta, delta])
                             ants[aid] += delta
                 nants = ants.shape[0]
-                print 'NANTENNAS:', nants
+                print('NANTENNAS:', nants)
 
                 #frequency information
                 nchan = SWHT.lofarConfig.rcuInfo[fDict['rcu']]['nchan']
                 bw = SWHT.lofarConfig.rcuInfo[fDict['rcu']]['bw']
                 df = bw/nchan
                 freqs = sbs*df + SWHT.lofarConfig.rcuInfo[fDict['rcu']]['offset'] + (df/2.) #df/2 to centre the band
-                print 'SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)'
+                print('SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)')
                 npols = 2
 
                 obs = ephem.Observer() #create an observer at the array location
@@ -264,7 +264,7 @@ if __name__ == '__main__':
                 obs.date = fDict['ts']
                 obsLat = float(obs.lat) #radians
                 obsLong = float(obs.long) #radians
-                print 'Observatory:', obs
+                print('Observatory:', obs)
 
                 #get the UVW and visibilities for the different subbands
                 ncorrs = nants*(nants+1)/2
@@ -278,7 +278,7 @@ if __name__ == '__main__':
 
                     #in order to accommodate multiple observations/subbands at different times/sidereal times all the positions need to be rotated relative to sidereal time 0
                     LSTangle = obs.sidereal_time() #radians
-                    print 'LST:',  LSTangle
+                    print('LST:',  LSTangle)
                     rotAngle = float(LSTangle) - float(obs.long) #adjust LST to that of the Observatory longitutude to make the LST that at Greenwich
                     #to be honest, the next two lines change the LST to make the images come out but i haven't worked out the coordinate transforms, so for now these work without justification
                     rotAngle += np.pi
@@ -328,19 +328,19 @@ if __name__ == '__main__':
                     corrMatrix[triu_indices[0], triu_indices[1]] = vis[:,0]/2.
 
                     #Create a LOFAR XST correlation matrix, XY and YX cross-pols are set to 0.
-                    fullCorrMatrix = np.zeros((nantpol, nantpol), dtype=complex)
+                    fullCorrMatrix = np.zeros((nants*npols, nants*npols), dtype=complex)
                     fullCorrMatrix[::2, ::2] = corrMatrix #XX
                     fullCorrMatrix[1::2, 1::2] = corrMatrix #YY
 
                     #Save simulated visibilities to XST file
                     #20150915_191137_rcu5_sb60_int10_dur10_xst.dat
                     xst_fn = dd + '_' + tt + '_rcu%i'%rcumode + '_sb%i'%sb + '_int%i'%int(opts.int_time) + '_dur%i'%int(opts.int_time) + '_xst.dat.sim'
-                    print 'Saving simulated visibilities to', xst_fn
+                    print('Saving simulated visibilities to', xst_fn)
                     fullCorrMatrix.tofile(xst_fn)
 
             #TODO: test
             elif fDict['fmt']=='ms': #MS-based visibilities
-                print visFn
+                print(visFn)
                 #TODO
                 #open MS, get XYZ positions, convert to r,theta,phi
                 #Compute visibilities from brightness coefficients
@@ -348,6 +348,6 @@ if __name__ == '__main__':
                 #save visibilities to column
 
             else:
-                print 'ERROR: unknown data format, exiting'
+                print('ERROR: unknown data format, exiting')
                 exit()
 

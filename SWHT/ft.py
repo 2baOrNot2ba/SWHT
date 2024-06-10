@@ -39,7 +39,7 @@ def get_baseline(i, j, src, obs):
     bl = j - i
     try:
         if src.alt < 0:
-            raise PointingError('Phase center below horizon')
+            raise RuntimeError('Phase center below horizon')
         m=src.map
     except(AttributeError):
         ra,dec = src._ra,src._dec
@@ -114,7 +114,7 @@ def dftImage(d, uvw, px, res, mask=False, rescale=False, stokes=False):
             if mask: #mask out region beyond field of view
                 rad = (m**2 + l**2)**.5
                 if rad > 1.: maskIm[lid,mid] = True
-    print time.time() - start_time
+    print(time.time() - start_time)
 
     im = np.flipud(np.fliplr(im)) #make top-left corner (0,0) the south-east point
     maskIm = np.flipud(np.fliplr(maskIm))
@@ -185,7 +185,7 @@ def fftImage(d, uvw, px, res, mask=False, conv='fast', wgt='natural'):
     im = np.fft.ifftshift(np.fft.ifft2(gridVis)) #shift (0,0) back to the middle
     im = np.fliplr(np.rot90(im)) #make top-left corner (0,0) the south-east point
     
-    print time.time() - start_time
+    print(time.time() - start_time)
     if mask: return im, maskIm
     else: return im
 
@@ -204,10 +204,10 @@ def convProlate(ures, vres, aa=1., cc=1.):
     return lambda uu,vv: np.sqrt( cc**2. * (1. - (((uu/ures)**2. + (vv/vres)**2.)/aa**2.)))
 
 if __name__ == '__main__':
-    print 'Running test cases'
+    print('Running test cases')
 
     #TODO: add tests
 
-    print 'Made it through without any errors.'
+    print('Made it through without any errors.')
 
 

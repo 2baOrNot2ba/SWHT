@@ -67,10 +67,10 @@ def computeVislm(lmax, k, r, theta, phi, vis, lmin=0):
     vislm = np.zeros((lmax+1, 2*lmax+1, nsbs), dtype=complex)
     kr = r * k.flatten() #compute the radii in wavelengths for each visibility sample
 
-    print 'L:',
+    print('L:', end=' ')
     for l in np.arange(lmax+1): #increase lmax by 1 to account for starting from 0
         if l < lmin: continue
-        print l,
+        print(l, end=' ')
         #jvVals = np.reshape(sphBj(l, kr.flatten(), autos=True), kr.shape) #compute Bessel function radius values
         jvVals = np.reshape(sphBj(l, kr.flatten(), autos=False), kr.shape) #compute Bessel function radius values
         sys.stdout.flush()
@@ -83,7 +83,7 @@ def computeVislm(lmax, k, r, theta, phi, vis, lmin=0):
     
     #Average coefficients in freqeuncy, TODO: there is probably something else to do here
     vislm = np.mean(vislm, axis=2)
-    print 'done'
+    print('done')
 
     return vislm
 
@@ -101,9 +101,9 @@ def computeVisSamples(vislm, k, r, theta, phi):
     kr = r * k.flatten() #compute the radii in wavelengths for each visibility sample
     lmax = vislm.shape[0] - 1
 
-    print 'L:',
+    print('L:', end=' ')
     for l in np.arange(lmax+1): #increase lmax by 1 to account for starting from 0
-        print l,
+        print(l, end=' ')
         #if l==0:
         #    krIdx = np.argwhere(kr == 0.)
         #    vis[krIdx] += vislm[0, 0] * 1. * (.5 * np.sqrt(1. / np.pi))
@@ -184,7 +184,7 @@ def swhtImageCoeffs(vis, uvw, freqs, lmax, lmin=0):
     #compute the SWHT brightness coefficients
     blm = computeblm(vislm)
 
-    print 'Run time: %f s'%(time.time() - start_time)
+    print('Run time: %f s'%(time.time() - start_time))
 
     return blm
 
@@ -227,7 +227,7 @@ def iswhtVisibilities(blm, uvw, freqs):
     #compute visibilities
     vis = computeVisSamples(vislm, k, r, theta, phi)
 
-    print 'Run time: %f s'%(time.time() - start_time)
+    print('Run time: %f s'%(time.time() - start_time))
 
     return vis
 
@@ -278,7 +278,7 @@ def make2Dimage(coeffs, res, px=[64, 64], phs=[0., 0.]):
                            [np.sin(ra),     np.cos(ra), 0.],
                            [        0.,             0., 1.]]) #rotate about the z-axis
     dec = np.pi - phs[1] #adjust relative to the north pole at -pi/2
-    print 'dec', dec, 'phs', phs[1]
+    print('dec', dec, 'phs', phs[1])
     # TODO: might need to do a transpose to apply the inverse rotation
     decRotation = np.array([[1.,0.,0.],
                             [0., np.cos(dec), -1.*np.sin(dec)],
@@ -293,15 +293,15 @@ def make2Dimage(coeffs, res, px=[64, 64], phs=[0., 0.]):
     theta0 = theta0.reshape(thetap.shape) #rotated theta values
 
     lmax = coeffs.shape[0]
-    print 'L:',
+    print('L:', end=' ')
     for l in np.arange(lmax):
-        print l,
+        print(l, end=' ')
         sys.stdout.flush()
         for m in np.arange(-1*l, l+1):
             img += coeffs[l, l+m] * Ylm.Ylm(l, m, phi0, theta0) #TODO: a slow call
-    print 'done'
+    print('done')
 
-    print 'Run time: %f s'%(time.time() - start_time)
+    print('Run time: %f s'%(time.time() - start_time))
 
     return np.ma.array(img, mask=maxRcond)
 
@@ -316,13 +316,13 @@ def make3Dimage(coeffs, dim=[64, 64]):
     img = np.zeros(theta.shape, dtype='complex')
 
     lmax = coeffs.shape[0]
-    print 'L:',
+    print('L:', end=' ')
     for l in np.arange(lmax):
-        print l,
+        print(l, end=' ')
         sys.stdout.flush()
         for m in np.arange(-1*l, l+1):
             img += coeffs[l, l+m] * Ylm.Ylm(l, m, phi, theta) #TODO: a slow call
-    print 'done'
+    print('done')
 
     return img, phi, theta #flip theta and phi values
 
@@ -338,19 +338,19 @@ def makeHEALPix(coeffs, nside=64):
     theta, phi = hp.pix2ang(nside, hpIdx)
 
     lmax = coeffs.shape[0] - 1
-    print 'L:',
+    print('L:', end=' ')
     for l in np.arange(lmax + 1):
-        print l,
+        print(l, end=' ')
         sys.stdout.flush()
         for m in np.arange(-1*l, l+1):
             hpmap += coeffs[l, l+m] * Ylm.Ylm(l, m, phi, theta) #TODO: a slow call
-    print 'done'
+    print('done')
 
     return hpmap
 
 # TODO: robust tests
 if __name__ == "__main__":
-    print 'Running test cases'
+    print('Running test cases')
 
     import matplotlib.pyplot as plt
 
@@ -377,7 +377,7 @@ if __name__ == "__main__":
     #Yp = 0.5 * np.sqrt(3./np.pi) * np.cos(theta) #1,0
     #Yp = -0.5 * np.sqrt(3./(2.*np.pi)) * np.sin(theta) * np.exp(phi * 1j) #1,1
     Yp = 0.5 * np.sqrt(3./(2.*np.pi)) * np.sin(theta) * np.exp(phi * -1j) #1,-1
-    print np.allclose(Y, Yp, atol=1e-08)
+    print(np.allclose(Y, Yp, atol=1e-08))
 
     #plt.subplot(231)
     #plt.imshow(Y.real, interpolation='nearest', extent=[0., np.pi, 0, 2.*np.pi])
@@ -427,24 +427,24 @@ if __name__ == "__main__":
     vis = np.reshape(vis, (100,3))
     lmax = 5
     vislm = computeVislm(lmax, k, r, theta, phi, vis)
-    print vislm.shape
+    print(vislm.shape)
 
     blm = computeblm(vislm)
-    print blm.shape
+    print(blm.shape)
 
     freqs = np.array([100., 110., 120.])*1e6
     uvw = ((np.random.rand(300) * 60.) - 30.).reshape(100, 3)
     blm = swhtImageCoeffs(vis, uvw, freqs, lmax)
-    print blm.shape
+    print(blm.shape)
 
     #plt.show()
     
     phi, theta = np.ogrid[0:2*np.pi:10j,-np.pi/2:np.pi/2:10j]
-    print "l", "m", "max|Ylm-sph_harm|" 
+    print("l", "m", "max|Ylm-sph_harm|")
     for l in np.arange(0,10):
         for m in np.arange(-l,l+1):
             a = spharm(l,m,theta,phi)
             b = scipy.special.sph_harm(m=m,n=l,theta=phi,phi=theta)
-            print l,m, np.amax(np.abs(a-b))
+            print(l, m, np.amax(np.abs(a-b)))
 
-    print 'Made it through without any errors.'
+    print('Made it through without any errors.')

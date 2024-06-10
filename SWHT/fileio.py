@@ -15,12 +15,12 @@ TODO: hdf5 wrappers for visibilities and images
         Observation history
 """
 
-import cPickle as pkl
+import pickle as pkl
 import numpy as np
 import datetime
 import ephem
 
-import ecef, lofarConfig, util
+from SWHT import ecef, lofarConfig, util
 
 def parse(fn, fmt=None):
     """Parse an input visibility filename to determine meta data and type
@@ -159,7 +159,7 @@ def lofarArrayLatLong(lofarStation, arrayType='LBA'):
     #lon, lat, elev = lofarStation.antArrays.location[lofarConfig.rcuInfo[fDict['rcu']]['array_type']]
     arr_xyz = lofarStation.antField.location[arrayType]
     lat, lon, elev = ecef.ecef2geodetic(arr_xyz[0], arr_xyz[1], arr_xyz[2], degrees=True)
-    print 'LON(deg):', lon, 'LAT(deg):', lat, 'ELEV(m):', elev
+    print('LON(deg):', lon, 'LAT(deg):', lat, 'ELEV(m):', elev)
 
     return lat, lon, elev
 
@@ -172,9 +172,9 @@ def lofarHBAAntPositions(ants, lofarStation, elem):
     returns: updated [N, 3] antenna position array
     """
     if lofarStation.deltas is None:
-        print 'Warning: HBA element string found, but HBADeltas file is missing, your image is probably not going to make sense'
+        print('Warning: HBA element string found, but HBADeltas file is missing, your image is probably not going to make sense')
     else:
-        print 'Updating antenna positions with HBA element deltas'
+        print('Updating antenna positions with HBA element deltas')
         for aid in np.arange(ants.shape[0]):
             delta = lofarStation.deltas[int(elem[aid], 16)]
             delta = np.array([delta, delta])
@@ -228,8 +228,8 @@ def lofarACCSelectSbs(fn, sbs, nchan, nantpol, intTime, antGains=None):
     tDeltas = np.reshape(np.array(tDeltas), (sbs.shape[0], 1)) # put in the shape [Nsubbands, Nints]
     sbCorrMatrix = np.reshape(sbCorrMatrix, (sbs.shape[0], 1, nantpol, nantpol)) # add integration axis
 
-    print 'CORRELATION MATRIX SHAPE', corrMatrix.shape
-    print 'REDUCED CORRELATION MATRIX SHAPE', sbCorrMatrix.shape
+    print('CORRELATION MATRIX SHAPE', corrMatrix.shape)
+    print('REDUCED CORRELATION MATRIX SHAPE', sbCorrMatrix.shape)
 
     return sbCorrMatrix, tDeltas
 
@@ -256,8 +256,8 @@ def lofarXST(fn, sb, nantpol, antGains=None):
 
     tDeltas = np.array(tDeltas)[np.newaxis] # put in the shape [Nsubbands, Nints]
 
-    print 'CORRELATION MATRIX SHAPE', corrMatrix.shape
-    print 'REDUCED CORRELATION MATRIX SHAPE', sbCorrMatrix.shape
+    print('CORRELATION MATRIX SHAPE', corrMatrix.shape)
+    print('REDUCED CORRELATION MATRIX SHAPE', sbCorrMatrix.shape)
 
     return sbCorrMatrix, tDeltas
 
@@ -284,7 +284,7 @@ def lofarKAIRAXST(fn, sb, nantpol, intTime, antGains=None, times='0'):
     if times.startswith('a'): # averaging
         intLen = float(times[1:]) * intTime
         nAvgInts = int(nints/intLen)
-        print 'KAIRA: avergaing XST file to %.2f second integrations, this will produce %i integrations'%(intLen, nAvgInts)
+        print('KAIRA: avergaing XST file to %.2f second integrations, this will produce %i integrations'%(intLen, nAvgInts))
         # clip off extra integrations to make the initial array a factor of the number of averaged integrations
         # reshape array
         # compute the mean for the axis to produce the averaged array
@@ -293,11 +293,11 @@ def lofarKAIRAXST(fn, sb, nantpol, intTime, antGains=None, times='0'):
     elif times.startswith('d'): #decimation
         decimateFactor = int(times[1:])
         tids = np.arange(nints)[::decimateFactor]
-        print 'KAIRA: decimating XST file to %i integrations'%(tids.shape[0])
+        print('KAIRA: decimating XST file to %i integrations'%(tids.shape[0]))
         reducedCorrMatrix = corrMatrix[tids]
     else: # unique IDs
         tids = np.array(util.convert_arg_range(times))
-        print 'KAIRA: selecting %i unique integrations'%(tids.shape[0])
+        print('KAIRA: selecting %i unique integrations'%(tids.shape[0]))
         reducedCorrMatrix = corrMatrix[tids]
 
     tDeltas = [] # integration timestamp deltas from the end of file
@@ -318,8 +318,8 @@ def lofarKAIRAXST(fn, sb, nantpol, intTime, antGains=None, times='0'):
     tDeltas = np.array(tDeltas)[np.newaxis] # put in the shape [Nsubbands, Nints]
     reducedCorrMatrix = np.reshape(reducedCorrMatrix, (1, tids.shape[0], nantpol, nantpol)) # add subband axis
 
-    print 'ORIGINAL CORRELATION MATRIX SHAPE', corrMatrix.shape
-    print 'REDUCED CORRELATION MATRIX SHAPE', reducedCorrMatrix.shape
+    print('ORIGINAL CORRELATION MATRIX SHAPE', corrMatrix.shape)
+    print('REDUCED CORRELATION MATRIX SHAPE', reducedCorrMatrix.shape)
 
     return reducedCorrMatrix, tDeltas
 
@@ -354,7 +354,7 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts):
         uvw: UVW coordinates [Nsamples*Nints, 3, Nsubbands]
     """
     nants = ants.shape[0]
-    ncorrs = nants*(nants+1)/2
+    ncorrs = int(nants*(nants+1)/2)
     nints = ts.shape[1]
     uvw = np.zeros((nints, ncorrs, 3, len(sbs)), dtype=float)
     vis = np.zeros((4, nints, ncorrs, len(sbs)), dtype=complex) # 4 polarizations: xx, xy, yx, yy
@@ -370,7 +370,7 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts):
             #obs.date = ts[sbIdx, tIdx]
 
             #LSTangle = obs.sidereal_time() # radians
-            print 'LST:',  LSTangle, 'Dec:', obs.lat
+            print('LST:',  LSTangle, 'Dec:', obs.lat)
 
             # Compute baselines in XYZ
             antPosRep = np.repeat(ants[:,0,:], nants, axis=0).reshape((nants, nants, 3)) # ants is of the form [nants, npol, 3], assume pols are at the same position
@@ -425,36 +425,36 @@ def readACC(fn, fDict, lofarStation, sbs, calTable=None):
     if 'elem' in fDict: # update the antenna positions if there is an element string
         ants = lofarHBAAntPositions(ants, lofarStation, fDict['elem'])
     nants = ants.shape[0]
-    print 'NANTENNAS:', nants
+    print('NANTENNAS:', nants)
 
     # frequency information
     freqs, nchan, bw = lofarFreqs(fDict, sbs)
-    print 'SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)'
+    print('SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)')
     npols = 2
 
     # read LOFAR Calibration Table
     if not (calTable is None):
         antGains = lofarStation.antField.antGains
         if antGains is None: # read the Cal Table only once
-            print 'Using CalTable:', calTable
+            print('Using CalTable:', calTable)
             antGains = lofarConfig.readCalTable(calTable, nants, nchan, npols)
             lofarStation.antField.antGains = antGains
         else:
-            print 'Using Cached CalTable:', calTable
+            print('Using Cached CalTable:', calTable)
     else: antGains = None
 
     # get correlation matrix for subbands selected
     nantpol = nants * npols
-    print 'Reading in visibility data file ...',
+    print('Reading in visibility data file ...', end=' ')
     corrMatrix, tDeltas = lofarACCSelectSbs(fn, sbs, nchan, nantpol, fDict['int'], antGains)
-    print 'done'
+    print('done')
     #print corrMatrix.shape, tDeltas.shape
     
     # create station observer
     obs = lofarObserver(lat, lon, elev, fDict['ts'])
     obsLat = float(obs.lat) #radians
     obsLong = float(obs.long) #radians
-    print 'Observatory:', obs
+    print('Observatory:', obs)
 
     # get the UVW and visibilities for the different subbands
     vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs, fDict['ts']-np.array(tDeltas))
@@ -484,35 +484,35 @@ def readXST(fn, fDict, lofarStation, sbs, calTable=None):
     if 'elem' in fDict: # update the antenna positions if there is an element string
         ants = lofarHBAAntPositions(ants, lofarStation, fDict['elem'])
     nants = ants.shape[0]
-    print 'NANTENNAS:', nants
+    print('NANTENNAS:', nants)
 
     # frequency information
     freqs, nchan, bw = lofarFreqs(fDict, sbs)
-    print 'SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)'
+    print('SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)')
     npols = 2
 
     # read LOFAR Calibration Table
     if not (calTable is None):
         antGains = lofarStation.antField.antGains
         if antGains is None: # read the Cal Table only once
-            print 'Using CalTable:', calTable
+            print('Using CalTable:', calTable)
             antGains = lofarConfig.readCalTable(calTable, nants, nchan, npols)
             lofarStation.antField.antGains = antGains
         else:
-            print 'Using Cached CalTable:', calTable
+            print('Using Cached CalTable:', calTable)
     else: antGains = None
 
     # get correlation matrix for subbands selected
     nantpol = nants * npols
-    print 'Reading in visibility data file ...',
+    print('Reading in visibility data file ...', end=' ')
     corrMatrix, tDeltas = lofarXST(fn, fDict['sb'], nantpol, antGains)
-    print 'done'
+    print('done')
     
     # create station observer
     obs = lofarObserver(lat, lon, elev, fDict['ts'])
     obsLat = float(obs.lat) #radians
     obsLong = float(obs.long) #radians
-    print 'Observatory:', obs
+    print('Observatory:', obs)
 
     # get the UVW and visibilities for the different subbands
     vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs, fDict['ts']-np.array(tDeltas))
@@ -546,35 +546,35 @@ def readKAIRAXST(fn, fDict, lofarStation, sbs, calTable=None, times='0'):
     if 'elem' in fDict: # update the antenna positions if there is an element string
         ants = lofarHBAAntPositions(ants, lofarStation, fDict['elem'])
     nants = ants.shape[0]
-    print 'NANTENNAS:', nants
+    print('NANTENNAS:', nants)
 
     # frequency information
     freqs, nchan, bw = lofarFreqs(fDict, sbs)
-    print 'SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)'
+    print('SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)')
     npols = 2
 
     # read LOFAR Calibration Table
     if not (calTable is None):
         antGains = lofarStation.antField.antGains
         if antGains is None: # read the Cal Table only once
-            print 'Using CalTable:', calTable
+            print('Using CalTable:', calTable)
             antGains = lofarConfig.readCalTable(calTable, nants, nchan, npols)
             lofarStation.antField.antGains = antGains
         else:
-            print 'Using Cached CalTable:', calTable
+            print('Using Cached CalTable:', calTable)
     else: antGains = None
 
     # get correlation matrix for subbands selected
     nantpol = nants * npols
-    print 'Reading in visibility data file ...',
+    print('Reading in visibility data file ...', end=' ')
     corrMatrix, tDeltas = lofarKAIRAXST(fn, fDict['sb'], nantpol, fDict['int'], antGains, times=times)
-    print 'done'
+    print('done')
 
     # create station observer
     obs = lofarObserver(lat, lon, elev, fDict['ts'])
     obsLat = float(obs.lat) #radians
     obsLong = float(obs.long) #radians
-    print 'Observatory:', obs
+    print('Observatory:', obs)
 
     # get the UVW and visibilities for the different subbands
     vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs, fDict['ts']-np.array(tDeltas))
@@ -597,7 +597,7 @@ def readMS(fn, sbs, column='DATA'):
     try:
         import casacore.tables as tbls
     except ImportError:
-        print 'ERROR: could not import casacore.tables, cannot read measurement sets'
+        print('ERROR: could not import casacore.tables, cannot read measurement sets')
         exit(1)
 
     MS = tbls.table(fn, readonly=True)
@@ -622,12 +622,12 @@ def readMS(fn, sbs, column='DATA'):
     # freq information, convert uvw coordinates
     SW = tbls.table(fn + '/SPECTRAL_WINDOW')
     freqs = SW.col('CHAN_FREQ').getcol()[0, sbs] # [nchan]
-    print 'SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)'
+    print('SUBBANDS:', sbs, '(', freqs/1e6, 'MHz)')
     SW.close()
 
     # TODO: check rotation reference is the same as with LOFAR data, north pole is dec=+90, ra=0
     # in order to accommodate multiple observations at different times/sidereal times all the positions need to be rotated relative to sidereal time 0
-    print 'LST:',  LSTangle
+    print('LST:',  LSTangle)
     rotAngle = float(LSTangle) - obsLong # adjust LST to that of the Observatory longitutude to make the LST that at Greenwich
     # to be honest, the next two lines change the LST to make the images come out but i haven't worked out the coordinate transforms, so for now these work without justification
     rotAngle += np.pi
@@ -683,23 +683,23 @@ def readMS(fn, sbs, column='DATA'):
     #return vis, uvw, LSTangle
 
 if __name__ == '__main__':
-    print 'Running test cases...'
+    print('Running test cases...')
 
     # LOFAR ACC
     fDict = parse('../examples/20150607_122433_acc_512x192x192.dat')
-    print fDict
+    print(fDict)
 
     # Measurement Set
     fDict = parse('../examples/zen.2455819.26623.uvcRREM.MS')
-    print fDict
+    print(fDict)
 
     # SE607 HBA XST
     fDict = parse('../examples/20150915_191137_rcu5_sb60_int10_dur10_elf0f39fe2034ea85fc02b3cc1544863053b328fd83291e880cd0bf3c3d3a50a164a3f3e0c070c73d073f4e43849c0e93b_xst.dat')
-    print fDict
+    print(fDict)
 
     # KAIRA XST
     fDict = parse('20160228_040005_xst.dat', fmt='KAIRA')
-    print fDict
+    print(fDict)
 
-    print '...Made it through without errors'
+    print('...Made it through without errors')
 
