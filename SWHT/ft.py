@@ -153,7 +153,8 @@ def fftImage(d, uvw, px, res, mask=False, conv='fast', wgt='natural'):
             #simple, rectangular convolution function (nearest neighbor convolution)
             uu = int(u[did]/deltau)
             vv = int(v[did]/deltav)
-            gridVis[(uu+(px[0]/2))%px[0], (vv+(px[1]/2))%px[1]] += dd
+            # python3 changed */int op to ret. float, so use // op to ret. int
+            gridVis[uu+(px[0]//2)%px[0], vv+(px[1]//2)%px[1]] += dd
     else:
         gridUV = np.mgrid[-.5*px[0]*deltau:.5*px[0]*deltau:deltau, -.5*px[1]*deltav:.5*px[1]*deltav:deltav]
 
