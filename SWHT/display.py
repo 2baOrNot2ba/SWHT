@@ -5,7 +5,7 @@ Functions to display images and coefficients
 import matplotlib.pyplot as plt
 import matplotlib.patches
 import numpy as np
-import swht, util
+from SWHT import swht, util
 
 def disp2D(img, dmode='dB', cmap='jet'):
     """Display 2D projected image
@@ -134,7 +134,7 @@ def disp3D(img, phi, theta, dmode='abs', cmap='jet'):
     from matplotlib.colors import Normalize
 
     fig = plt.figure(figsize=(10,8))
-    ax = fig.gca(projection='3d')
+    ax = fig.add_subplot(projection='3d')
     imin = img.min()
     imax = img.max()
 
@@ -151,7 +151,7 @@ def disp3D(img, phi, theta, dmode='abs', cmap='jet'):
     ax.set_xlim(-0.75,0.75)
     ax.set_ylim(-0.75,0.75)
     ax.set_zlim(-0.75,0.75)
-    ax.set_aspect('auto')
+    ax.set_aspect('equal')
 
     return fig, ax
 
@@ -225,7 +225,8 @@ def dispVis3D(uvw):
     """
     from mpl_toolkits.mplot3d import Axes3D
     fig = plt.figure(figsize=(8,6))
-    ax = fig.gca(projection='3d')
+    #ax = fig.gca(projection='3d')
+    ax = fig.add_subplot(projection='3d')
     
     ax.scatter(uvw[:,0], uvw[:,1], uvw[:,2], edgecolors=None, alpha=0.5)
     ax.set_xlabel('U (m)')
