@@ -17,8 +17,8 @@ try:
 except ImportError:
     healpyEnabled = False
 
-import Ylm
-import util
+from . import Ylm
+from . import util
 
 cc = 299792458. #speed of light, m/s
 
