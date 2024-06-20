@@ -24,10 +24,11 @@ if __name__ == '__main__':
         help = 'Output the HEALPIX map in Celestial coordinates instead of Galactic')
     opts, args = o.parse_args(sys.argv[1:])
 
-    print 'Using pandas:', not useNumpy
+    if not useNumpy:
+        print('Using pandas:')
     for fid,fn in enumerate(args):
         outfn = fn + '.hpx'
-        print 'Converting: %s to %s (%i/%i)'%(fn, outfn, fid+1, len(args))
+        print('Converting: %s to %s (%i/%i)'%(fn, outfn, fid+1, len(args)))
 
         start_time = time.time()
         if useNumpy:
@@ -37,10 +38,10 @@ if __name__ == '__main__':
         
         nside = hp.npix2nside(m.shape[0])
         npix = m.shape[0]
-        print '\t(%f s) NSIDE: %i PIXELS: %i'%(time.time() - start_time, nside, npix)
+        print('\t(%f s) NSIDE: %i PIXELS: %i'%(time.time() - start_time, nside, npix))
 
         if opts.celestial:
-            print '\tConverting to Celestial Coordinates'
+            print('\tConverting to Celestial Coordinates')
             # the output of gsm is in galactic coordinates, but it will be more useful in celestial coordinates for interferometry
             r = hp.Rotator(coord=['C','G'])  # Transforms celestial coordinates to galactic
             celeTheta, celePhi = hp.pix2ang(nside, np.arange(npix)) #get celestial coordinates from pixel numbers
@@ -53,5 +54,5 @@ if __name__ == '__main__':
         else:
             hp.write_map(outfn, m, coord='G')
 
-    print 'Finished'
+    print('Finished')
 

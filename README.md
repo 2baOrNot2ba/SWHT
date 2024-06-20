@@ -25,10 +25,10 @@ To install the current stable version (0.1.2) use pip:
 pip install SWHT
 ```
 
-While developing it is useful to do a developer install:
+While developing it is useful to do a developer install in the SWHT directory:
 
 ```
-sudo python setup.py develop
+python -m pip install --editable .
 ```
 
 Otherwise, the standard install will install the package:
