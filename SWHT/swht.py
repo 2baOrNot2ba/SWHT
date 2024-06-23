@@ -268,7 +268,7 @@ def make2Dimage(coeffs, res, px=[64, 64], phs=[0., 0.]):
     phi = np.reshape(phiflat, phi.shape)
 
     #convert to unit sphere coordinates
-    thetap = np.arccos(r) - np.pi/2. #north pole is at 0 in spherical coordinates
+    thetap = -np.arccos(r) + np.pi/2. #north pole is at 0 in spherical coordinates
     phip = np.pi - phi #azimuth range [-pi, pi] -> [2pi, 0]
 
     #Determine the theta, phi coordinates for a hemisphere at the snapshot zenith
@@ -277,7 +277,7 @@ def make2Dimage(coeffs, res, px=[64, 64], phs=[0., 0.]):
     raRotation = np.array([[np.cos(ra), -1.*np.sin(ra), 0.],
                            [np.sin(ra),     np.cos(ra), 0.],
                            [        0.,             0., 1.]]) #rotate about the z-axis
-    dec = np.pi - phs[1] #adjust relative to the north pole at -pi/2
+    dec = np.pi/2 - phs[1] #adjust relative to the north pole at -pi/2
     print('dec', dec, 'phs', phs[1])
     # TODO: might need to do a transpose to apply the inverse rotation
     decRotation = np.array([[1.,0.,0.],
