@@ -2,7 +2,7 @@
 """
 Produce an image from a set of SWHT brightness coefficients
 """
-
+import healpy
 import numpy as np
 from matplotlib import pyplot as plt
 import sys,os
@@ -53,6 +53,12 @@ if __name__ == '__main__':
             obsLong = coeffDict['phs'][0]
             obsLat = coeffDict['phs'][1]
             decomp = False
+        elif fDict['fmt'] == 'coefs.hpx':
+            obsLat = 90.
+            LSTangle = 0.
+            iImgCoeffs = healpy.read_alm(coeffFn)
+            lmax = healpy.Alm.getlmax(iImgCoeffs.size)
+            iImgCoeffs = SWHT.util.almVec2array(iImgCoeffs, lmax)
         else:
             print('ERROR: unknown data format, exiting')
             exit()

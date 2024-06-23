@@ -70,6 +70,9 @@ def parse(fn, fmt=None):
                     fDict['elem'] = metaData[6][2:]
     elif fn.lower().endswith('.pkl') or fmt=='pkl': # the file is a set of SWHT image coefficients
         fDict['fmt'] = 'pkl'
+    elif fn.lower().endswith('coefs.hpx') or fmt=='coefs.hpx':
+        # file is a set of SWHT image coefficients in healpy alm format
+        fDict['fmt'] = 'coefs.hpx'
     else:
         # unknown data format, returns warning
         fDict['fmt'] = -1
