@@ -7,7 +7,7 @@ import matplotlib.patches
 import numpy as np
 from SWHT import swht, util
 
-def disp2D(img, dmode='dB', cmap='jet'):
+def disp2D(img, dmode='dB', cmap='jet', azi_north=False):
     """Display 2D projected image
     img: 2D array of complex flux values
     dmode: string, data mode (abs, dB (absolute value in log units), real, imaginary, phase)
@@ -41,16 +41,28 @@ def disp2D(img, dmode='dB', cmap='jet'):
     altLines = 5 # number of lines at constant altitude, including alt=0 and alt=90
     deltaAlt = img.shape[0] / (2.*altLines)
     for al in range(1, altLines): # skip alt=0 and alt=90
-        ax.add_patch( matplotlib.patches.Circle((xc, yc), xc-deltaAlt*al, fill=False, linestyle='dotted', alpha=0.7))
+        ax.add_patch( matplotlib.patches.Circle((xc, yc), xc-deltaAlt*al,
+                                                fill=False, linestyle='dotted',
+                                                alpha=0.7))
     azLines = 6 # number of constant azimuth lines
     deltaAz = np.pi / azLines
     for az in range(azLines):
-        plt.plot(np.array([np.cos(az*deltaAz), np.cos(az*deltaAz + np.pi)])/2. + 0.5, np.array([np.sin(az*deltaAz), np.sin(az*deltaAz + np.pi)])/2. + 0.5, 'k:', alpha=0.7, transform=ax.transAxes)
+        plt.plot(np.array([np.cos(az*deltaAz), np.cos(az*deltaAz + np.pi)])/2. + 0.5,
+                 np.array([np.sin(az*deltaAz), np.sin(az*deltaAz + np.pi)])/2. + 0.5,
+                 'k:', alpha=0.7, transform=ax.transAxes)
 
     # grid labels
     for az in range(2*azLines):
-        #plt.text(img.shape[0] * (1.06 * np.cos(az*deltaAz)/2. + 0.5), img.shape[0] * (1.06 * np.sin(az*deltaAz)/2. + 0.5), '%.0f'%(az*deltaAz*180./np.pi), horizontalalignment='center')
-        plt.text(img.shape[0] * (1.06 * np.sin(az*deltaAz - np.pi)/2. + 0.5), img.shape[0] * (1.06 * np.cos(az*deltaAz - np.pi)/2. + 0.5), '%.0f'%(az*deltaAz*180./np.pi), horizontalalignment='center')
+        if not azi_north:
+            # Put 0 az tick to the right
+            plt.text(img.shape[0] * (1.06 * np.cos(az*deltaAz)/2. + 0.5),
+                     img.shape[0] * (1.06 * np.sin(az*deltaAz)/2. + 0.5),
+                     '%.0f'%(az*deltaAz*180./np.pi), horizontalalignment='center')
+        else:
+            # Put 0 az tick upwards
+            plt.text(img.shape[0] * (1.06 * np.sin(az*deltaAz - np.pi)/2. + 0.5),
+                     img.shape[0] * (1.06 * np.cos(az*deltaAz - np.pi)/2. + 0.5),
+                     '%.0f'%(az*deltaAz*180./np.pi), horizontalalignment='center')
 
     plt.colorbar()
 
