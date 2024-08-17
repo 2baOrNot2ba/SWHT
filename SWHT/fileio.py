@@ -366,14 +366,14 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts, local_uv=False):
         for tIdx in np.arange(nints):
             #TODO: using a reference Obs emperically works, but I can't quite justify it yet
             #TODO: using a reference Obs probably breaks the FT script, check if there is another roation needed
-            refObs = lofarObserver(0., -90., 0., ts[sbIdx, tIdx]) # create an observatory at (lat,long)=(0,-90) to get the sidereal time at the reference position, this is along the Y axis I believe
-            LSTangle = refObs.sidereal_time() # sidereal time at reference location, radians
+            refGST = lofarObserver(0., 0., 0., ts[sbIdx, tIdx]) # create an observatory at (lat,long)=(0,-90) to get the sidereal time at the reference position, this is along the Y axis I believe
+            GSTangle = refGST.sidereal_time()
 
             #obs.epoch = ts[sbIdx, tIdx]
             #obs.date = ts[sbIdx, tIdx]
 
-            #LSTangle = obs.sidereal_time() # radians
-            print('LST:',  LSTangle, 'Dec:', obs.lat)
+            LSTangle = obs.sidereal_time() # radians
+            print('LST:',  LSTangle, 'Dec:', obs.lat, 'long:', obs.lon)
 
             # Compute baselines in XYZ
             antPosRep = np.repeat(ants[:,0,:], nants, axis=0).reshape((nants, nants, 3)) # ants is of the form [nants, npol, 3], assume pols are at the same position
@@ -409,7 +409,8 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts, local_uv=False):
                 decRotMat = np.array([[1., 0., 0.],
                                       [0.,  np.sin(dec), np.cos(dec)],
                                       [0., -np.cos(dec), np.sin(dec)]])
-                ha = float(LSTangle) - 0.  # Hour Angle in reference to longitude/RA=0
+                ha = float(GSTangle) - 0.  # Hour Angle in reference to longitude/RA=0
+                print('HA',np.rad2deg(ha))
                 haRotMat = -np.array([[np.cos(ha), -np.sin(ha), 0.],
                                       [np.sin(ha),  np.cos(ha), 0.],
                                       [0., 0., -1.]])  # rotate about z-axis, xy-flip
@@ -549,7 +550,7 @@ def readXST(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
     # get the UVW and visibilities for the different subbands
     vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs,
                                      fDict['ts']-np.array(tDeltas),
-                                     local_uv=False)
+                                     local_uv=local_uv)
 
     return vis, uvw, freqs, [obsLat, obsLong, LSTangle]
 
