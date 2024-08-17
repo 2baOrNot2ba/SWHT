@@ -77,7 +77,11 @@ if __name__ == '__main__':
         help = 'KAIRA ONLY: Select which integration(s) to image, can use a[seconds] to average, d[step size] to decimate, of a specific range of integrations similar to the subband selection option, default:0 (select the first integration of the file)')
     o.add_option('--pol', dest='polMode', default='I',
         help='Polarization selection: I, Q, U, V, XX, YY, XY, YX, default: I')
+    o.add_option('-u', '--uv', dest='local_uv', action='store_true',
+                 help='Use local uv coord sys instead of RA-DEC uvw')
     opts, args = o.parse_args(sys.argv[1:])
+
+    local_uv = opts.local_uv
 
     # parse subbands
     sbs = np.array(SWHT.util.convert_arg_range(opts.subband))
@@ -107,7 +111,8 @@ if __name__ == '__main__':
             fDict['sb'] = sbs # select subbands to use
             fDict['int'] = opts.int_time # set integration length (usually 1 second)
 
-            vis, uvw, freqs, obsInfo = SWHT.fileio.readACC(visFn, fDict, lofarStation, sbs, calTable=opts.calfile)
+            vis, uvw, freqs, obsInfo = SWHT.fileio.readACC(visFn, fDict,
+                lofarStation, sbs, calTable=opts.calfile, local_uv=local_uv)
             [obsLat, obsLong, LSTangle] = obsInfo
 
             # add visibilities to previously processed files
@@ -123,7 +128,8 @@ if __name__ == '__main__':
             else:
                 sbs = fDict['sb']
 
-            vis, uvw, freqs, obsInfo = SWHT.fileio.readXST(visFn, fDict, lofarStation, sbs, calTable=opts.calfile)
+            vis, uvw, freqs, obsInfo = SWHT.fileio.readXST(visFn, fDict,
+                    lofarStation, sbs, calTable=opts.calfile, local_uv=local_uv)
             [obsLat, obsLong, LSTangle] = obsInfo
 
             # add visibilities to previously processed files
@@ -139,7 +145,8 @@ if __name__ == '__main__':
             else:
                 sbs = fDict['sb']
 
-            vis, uvw, freqs, obsInfo = SWHT.fileio.readKAIRAXST(visFn, fDict, lofarStation, sbs, times=opts.times)
+            vis, uvw, freqs, obsInfo = SWHT.fileio.readKAIRAXST(visFn, fDict,
+                        lofarStation, sbs, times=opts.times, local_uv=local_uv)
             [obsLat, obsLong, LSTangle] = obsInfo
 
             # add visibilities to previously processed files
@@ -236,9 +243,16 @@ if __name__ == '__main__':
         res = fov/px[0] # pixel resolution
         print('Generating 2D Hemisphere Image of size (%i, %i)'%(px[0], px[1]))
         print('Resolution(deg):', res*180./np.pi)
-        #img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=[0., 0.]) #TODO: 0 because the positions have already been rotated to the zenith RA of the first snapshot, if multiple snaphsots this needs to be reconsidered
-        img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=[float(LSTangle), obsLat]) #TODO: 0 because the positions have already been rotated to the zenith RA of the first snapshot, if multiple snaphsots this needs to be reconsidered
-        #img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=[0., float(obsLat)]) #TODO: 0 because the positions have already been rotated to the zenith RA of the first snapshot, if multiple snaphsots this needs to be reconsidered
+        if local_uv:
+            # Put zenith (lcl coordsys) at center of image
+            zen = [0., np.pi/2]
+            img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=zen)
+        else:
+            # Put North celestial-pole at center of image since it is a cardinal
+            # direction that most LOFAR stations have in their LBA FoV, and
+            # align RA 00h (GST angle) to be at plot azimuth 0.
+            ncp_gst = [LSTangle+obsLong, np.pi/2]
+            img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=ncp_gst)
         fig, ax = SWHT.display.disp2D(img, dmode='abs', cmap='jet')
 
         # save complex image to pickle file

@@ -344,7 +344,7 @@ def lofarObserver(lat, lon, elev, ts):
     
     return obs
 
-def lofarGenUVW(corrMatrix, ants, obs, sbs, ts):
+def lofarGenUVW(corrMatrix, ants, obs, sbs, ts, local_uv=False):
     """Generate UVW coordinates from antenna positions, timestamps/subbands
     corrMatrix: [Nsubbands, Nints, nantpol, nantpol] array, correlation matrix for each subband, time integration
     ants: [Nantennas, 3] array, antenna positions in XYZ
@@ -379,17 +379,41 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts):
             antPosRep = np.repeat(ants[:,0,:], nants, axis=0).reshape((nants, nants, 3)) # ants is of the form [nants, npol, 3], assume pols are at the same position
             xyz = util.vectorize(antPosRep - np.transpose(antPosRep, (1, 0, 2)))
 
-            # Rotation matricies for XYZ -> UVW transform
-            dec = float(np.pi/2.) # set the north pole to be dec 90, thus the dec rotation matrix below is not really needed
-            decRotMat = np.array([  [1.,              0.,          0.],
-                                    [0.,     np.sin(dec), np.cos(dec)],
-                                    [0., -1.*np.cos(dec), np.sin(dec)]]) #rotate about x-axis
-            ha = float(LSTangle) - 0. # Hour Angle in reference to longitude/RA=0
-            #ha = float(LSTangle) - 0. - (np.pi/2.) # Hour Angle in reference to longitude/RA=0, use if refObs at (0,0) 
-            haRotMat = np.array([   [    np.sin(ha), np.cos(ha), 0.],
-                                    [-1.*np.cos(ha), np.sin(ha), 0.],
-                                    [0.,             0.,         1.]]) #rotate about z-axis
-            rotMatrix = np.dot(decRotMat, haRotMat)
+            if local_uv:
+                # Compute local UV coord sys by first estimating normal to
+                # xyz (uvw) array, using the fact that its normal vec is a
+                # null space vector.
+                _u_svd, _d_svd, _vt_svd = np.linalg.svd(xyz)
+                nrmvec = -_vt_svd[2,:]/np.linalg.norm(_vt_svd[2,:])
+                lon_nrm = np.arctan2(nrmvec[1], nrmvec[0])
+                lat_nrm = np.arcsin(nrmvec[2])
+                # Transform by rotations xyz to local UV crd sys, which has
+                # normal along its z-axis and long-axis along x-axis:
+                # First rotate around z so nrmvec x is in (+x,+z) quadrant
+                # (this means Easting is normal to longitude 0 meridian plane)
+                _rz = np.array([[np.cos(lon_nrm), np.sin(lon_nrm), 0.],
+                                [-np.sin(lon_nrm), np.cos(lon_nrm), 0.],
+                                [0., 0., 1.]])
+                # Second rotate around y until normal vec is along z (NCP)
+                _tht = (np.pi/2 - lat_nrm)
+                _ry = np.array([[np.cos(_tht), 0., -np.sin(_tht)],
+                                [0., 1., 0.],
+                                [+np.sin(_tht), 0., np.cos(_tht)]])
+                # Third rotate around z so Easting is along (final) x
+                _r_xy90 = np.array([[0,1,0],[-1,0,0],[0,0,1]])
+                rotMatrix = _r_xy90 @ _ry @ _rz
+            else:
+                # Rotation matricies for XYZ -> UVW transform
+                dec = np.pi / 2.  # set the north pole to be dec 90,
+                                  # thus the dec rotation matrix below is not really needed
+                decRotMat = np.array([[1., 0., 0.],
+                                      [0.,  np.sin(dec), np.cos(dec)],
+                                      [0., -np.cos(dec), np.sin(dec)]])
+                ha = float(LSTangle) - 0.  # Hour Angle in reference to longitude/RA=0
+                haRotMat = -np.array([[np.cos(ha), -np.sin(ha), 0.],
+                                      [np.sin(ha),  np.cos(ha), 0.],
+                                      [0., 0., -1.]])  # rotate about z-axis, xy-flip
+                rotMatrix = np.dot(decRotMat, haRotMat)
 
             uvw[tIdx, :, :, sbIdx] = np.dot(rotMatrix, xyz.T).T
 
@@ -405,7 +429,7 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts):
     #TODO: i don't think we need to return the LST angle
     return vis, uvw, LSTangle
 
-def readACC(fn, fDict, lofarStation, sbs, calTable=None):
+def readACC(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
     """Return the visibilites and UVW coordinates from a LOFAR station ACC file
     fn: ACC filename
     fDict: dictionary of file format meta data, see parse()
@@ -460,11 +484,13 @@ def readACC(fn, fDict, lofarStation, sbs, calTable=None):
     print('Observatory:', obs)
 
     # get the UVW and visibilities for the different subbands
-    vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs, fDict['ts']-np.array(tDeltas))
+    vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs,
+                                     fDict['ts']-np.array(tDeltas),
+                                     local_uv=local_uv)
 
     return vis, uvw, freqs, [obsLat, obsLong, LSTangle]
 
-def readXST(fn, fDict, lofarStation, sbs, calTable=None):
+def readXST(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
     """Return the visibilites and UVW coordinates from a LOFAR XST format file
     fn: XST filename
     fDict: dictionary of file format meta data, see parse()
@@ -484,6 +510,9 @@ def readXST(fn, fDict, lofarStation, sbs, calTable=None):
 
     # antenna positions
     ants = lofarStation.antField.antpos[lofarConfig.rcuInfo[fDict['rcu']]['array_type']]
+    antpos_topo = lofarStation.antField.localAntPos[lofarConfig.rcuInfo[fDict['rcu']]['array_type']]
+    #ants=antpos_topo
+    print('**ANTS**',ants.shape)
     if 'elem' in fDict: # update the antenna positions if there is an element string
         ants = lofarHBAAntPositions(ants, lofarStation, fDict['elem'])
     nants = ants.shape[0]
@@ -518,11 +547,14 @@ def readXST(fn, fDict, lofarStation, sbs, calTable=None):
     print('Observatory:', obs)
 
     # get the UVW and visibilities for the different subbands
-    vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs, fDict['ts']-np.array(tDeltas))
+    vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs,
+                                     fDict['ts']-np.array(tDeltas),
+                                     local_uv=False)
 
     return vis, uvw, freqs, [obsLat, obsLong, LSTangle]
 
-def readKAIRAXST(fn, fDict, lofarStation, sbs, calTable=None, times='0'):
+def readKAIRAXST(fn, fDict, lofarStation, sbs, calTable=None, times='0',
+                 local_uv=False):
     """Return the visibilites and UVW coordinates from a KAIRA LOFAR XST format file
     fn: XST filename
     fDict: dictionary of file format meta data, see parse()
@@ -580,7 +612,9 @@ def readKAIRAXST(fn, fDict, lofarStation, sbs, calTable=None, times='0'):
     print('Observatory:', obs)
 
     # get the UVW and visibilities for the different subbands
-    vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs, fDict['ts']-np.array(tDeltas))
+    vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs,
+                                     fDict['ts']-np.array(tDeltas),
+                                     local_uv=local_uv)
 
     return vis, uvw, freqs, [obsLat, obsLong, LSTangle]
 
