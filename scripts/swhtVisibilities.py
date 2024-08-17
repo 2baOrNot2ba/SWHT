@@ -251,9 +251,11 @@ if __name__ == '__main__':
             # Put North celestial-pole at center of image since it is a cardinal
             # direction that most LOFAR stations have in their LBA FoV, and
             # align RA 00h (GST angle) to be at plot azimuth 0.
-            ncp_gst = [LSTangle+obsLong, np.pi/2]
+            ncp_gst = [0., np.pi/2]
+            scp_gst = [0., -np.pi/2]
             img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=ncp_gst)
-        fig, ax = SWHT.display.disp2D(img, dmode='abs', cmap='jet')
+        fig, ax = SWHT.display.disp2D(img, dmode='abs', cmap='jet',
+                                      azi_north=True)
 
         # save complex image to pickle file
         print('Writing image to file %s ...'%outFn, end=' ')
