@@ -59,8 +59,7 @@ def Ylmr(l, m, phi, theta):
     return lplm_n(l, m, np.cos(theta)) * np.ones_like(phi)
 
 if __name__ == "__main__":
-    from scipy.special import sph_harm
-    from scipy.misc import factorial2, factorial
+    from scipy.special import sph_harm, factorial2, factorial
     from timeit import Timer
 
     def ref_xfact(m):
@@ -76,7 +75,7 @@ if __name__ == "__main__":
         "from __main__ import xfact, ref_xfact").timeit(100))
     
     print("m", "xfact", "ref_xfact")
-    for m in range(10) + range(80,90):
+    for m in np.arange(10) + np.arange(80,90):
         a = xfact(m)
         b = ref_xfact(m)
         print(m, a, b)
