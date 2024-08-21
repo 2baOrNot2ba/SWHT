@@ -17,8 +17,8 @@ try:
 except ImportError:
     healpyEnabled = False
 
-from . import Ylm
-from . import util
+from SWHT import Ylm
+from SWHT import util
 
 cc = 299792458. #speed of light, m/s
 
@@ -46,9 +46,9 @@ def spharm(l, m, theta, phi):
     """
     #for some reason, if m<0 the call is much slower, but Y_l,-m is the complex conjugate of -1.*Y_l,m
     if m<0:
-        return (-1.)**m * np.conjugate(scipy.special.sph_harm(n=l, m=np.abs(m), theta=phi, phi=theta)) #scipy uses non-standard notation
+        return (-1.)**m * np.conjugate(scipy.special.sph_harm(np.abs(m), l, phi, theta)) #scipy uses non-standard notation
     else:
-        return scipy.special.sph_harm(n=l, m=m, theta=phi, phi=theta) #scipy uses non-standard notation
+        return scipy.special.sph_harm(m, l, phi, theta) #scipy uses non-standard notation
 
 def computeVislm(lmax, k, r, theta, phi, vis, lmin=0):
     """Compute the spherical wave harmonics visibility coefficients, Eq. 16 of Carozzi 2015
@@ -443,7 +443,7 @@ if __name__ == "__main__":
     for l in np.arange(0,10):
         for m in np.arange(-l,l+1):
             a = spharm(l,m,theta,phi)
-            b = scipy.special.sph_harm(m=m,n=l,theta=phi,phi=theta)
+            b = scipy.special.sph_harm(m, l, phi, theta)
             print(l, m, np.amax(np.abs(a-b)))
 
     print('Made it through without any errors.')
