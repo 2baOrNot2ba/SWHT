@@ -69,7 +69,7 @@ if __name__ == '__main__':
     ####################
     visFiles = args # filenames to image
     for vid,visFn in enumerate(visFiles):
-        print 'Using %s (%i/%i)'%(visFn, vid+1, len(visFiles))
+        print('Using %s (%i/%i)'%(visFn, vid+1, len(visFiles)))
         fDict = SWHT.fileio.parse(visFn, fmt=dataFmt)
 
         # Pull out the visibility data in a (u,v,w) format
@@ -131,7 +131,7 @@ if __name__ == '__main__':
             uvwComb = np.concatenate((uvwComb, uvw), axis=0)
 
         elif fDict['fmt']=='pkl':
-            print 'Loading Image Coefficients file:', visFn
+            print('Loading Image Coefficients file:', visFn)
             coeffDict = SWHT.fileio.readCoeffPkl(visFn)
             iImgCoeffs = coeffDict['coeffs']
             LSTangle = coeffDict['lst']
@@ -140,7 +140,7 @@ if __name__ == '__main__':
             decomp = False
 
         else:
-            print 'ERROR: unknown data format, exiting'
+            print('ERROR: unknown data format, exiting')
             exit()
 
     if opts.mode.lower() == '3d':
