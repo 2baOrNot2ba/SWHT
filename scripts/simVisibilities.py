@@ -316,6 +316,9 @@ if __name__ == '__main__':
                     plt.imshow(10.*np.log10(np.abs(iImgCoeffs-blm)), interpolation='nearest')
                     plt.colorbar()
                     plt.show()
+                    mp=hp.alm2map(SWHT.util.array2almVec(iImgCoeffs),32)
+                    hp.mollview(mp, coord=['C','G'])
+                    plt.show()
 
                     SWHT.fileio.writeCoeffPkl('reverseTestCoeffs.pkl', iImgCoeffs, [0., 0.], 0.)
                     exit()
