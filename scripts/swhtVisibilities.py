@@ -24,7 +24,7 @@ except ImportError:
 #cc = scipy.constants.c
 cc = 299792458.0 #speed of light, m/s
 
-if __name__ == '__main__':
+def main_cli():
     from optparse import OptionParser
     o = OptionParser()
     o.set_usage('%prog [options] ACC/XST/MS/PKL FILE')
@@ -80,103 +80,19 @@ if __name__ == '__main__':
     o.add_option('-u', '--uv', dest='local_uv', action='store_true',
                  help='Use local uv coord sys instead of RA-DEC uvw')
     opts, args = o.parse_args(sys.argv[1:])
+    swht_visibilities(args, opts)
 
-    local_uv = opts.local_uv
 
-    # parse subbands
-    sbs = np.array(SWHT.util.convert_arg_range(opts.subband))
-
-    # setup variables for combined visibilities and uvw samples
-    visComb = np.array([]).reshape(4, 0, len(sbs))
-    uvwComb = np.array([]).reshape(0, 3, len(sbs))
-
-    dataFmt = None
-    if (not (opts.station is None)) or (not (opts.ant_field is None)): # If using LOFAR data, get station information
-        lofarStation = SWHT.lofarConfig.getLofarStation(name=opts.station, affn=opts.ant_field, aafn=opts.ant_array, deltas=opts.deltas)
-        antGains = None # Setup variable so that the gain table isn't re-read for every file if used
-        if lofarStation.name=='KAIRA': dataFmt='KAIRA'
-
+def swht_visibilities(args, opts):
     ####################
     ## Read Visibilities
     ####################
     visFiles = args # filenames to image
-    for vid,visFn in enumerate(visFiles):
-        print('Using %s (%i/%i)'%(visFn, vid+1, len(visFiles)))
-        fDict = SWHT.fileio.parse(visFn, fmt=dataFmt)
-
-        # Pull out the visibility data in a (u,v,w) format
-        if fDict['fmt']=='acc': # LOFAR station all subbands ACC file visibilities
-            decomp = True
-            fDict['rcu'] = opts.rcumode # add the RCU mode to the meta data of an ACC file
-            fDict['sb'] = sbs # select subbands to use
-            fDict['int'] = opts.int_time # set integration length (usually 1 second)
-
-            vis, uvw, freqs, obsInfo = SWHT.fileio.readACC(visFn, fDict,
-                lofarStation, sbs, calTable=opts.calfile, local_uv=local_uv)
-            [obsLat, obsLong, LSTangle] = obsInfo
-
-            # add visibilities to previously processed files
-            visComb = np.concatenate((visComb, vis), axis=1)
-            uvwComb = np.concatenate((uvwComb, uvw), axis=0)
-
-        elif fDict['fmt']=='xst': # LOFAR XST format visibilities
-            decomp = True
-            if opts.override: # Override XST filename metadata
-                fDict['rcu'] = opts.rcumode
-                fDict['sb'] = sbs
-                fDict['int'] = opts.int_time
-            else:
-                sbs = fDict['sb']
-
-            vis, uvw, freqs, obsInfo = SWHT.fileio.readXST(visFn, fDict,
-                    lofarStation, sbs, calTable=opts.calfile, local_uv=local_uv)
-            [obsLat, obsLong, LSTangle] = obsInfo
-
-            # add visibilities to previously processed files
-            visComb = np.concatenate((visComb, vis), axis=1)
-            uvwComb = np.concatenate((uvwComb, uvw), axis=0)
-
-        elif fDict['fmt']=='KAIRA': # KAIRA LOFAR XST format visibilities
-            decomp = True
-            if opts.override: # Override XST filename metadata
-                fDict['rcu'] = opts.rcumode
-                fDict['sb'] = sbs
-                fDict['int'] = opts.int_time
-            else:
-                sbs = fDict['sb']
-
-            vis, uvw, freqs, obsInfo = SWHT.fileio.readKAIRAXST(visFn, fDict,
-                        lofarStation, sbs, times=opts.times, local_uv=local_uv)
-            [obsLat, obsLong, LSTangle] = obsInfo
-
-            # add visibilities to previously processed files
-            visComb = np.concatenate((visComb, vis), axis=1)
-            uvwComb = np.concatenate((uvwComb, uvw), axis=0)
-
-        elif fDict['fmt']=='ms': # MS-based visibilities
-            decomp = True
-
-            fDict['sb'] = sbs
-
-            vis, uvw, freqs, obsInfo = SWHT.fileio.readMS(visFn, sbs, column=opts.column)
-            [obsLat, obsLong, LSTangle] = obsInfo
-
-            # add visibilities to previously processed files
-            visComb = np.concatenate((visComb, vis), axis=1)
-            uvwComb = np.concatenate((uvwComb, uvw), axis=0)
-
-        elif fDict['fmt']=='pkl':
-            print('Loading Image Coefficients file:', visFn)
-            coeffDict = SWHT.fileio.readCoeffPkl(visFn)
-            imgCoeffs = coeffDict['coeffs']
-            LSTangle = coeffDict['lst']
-            obsLong = coeffDict['phs'][0]
-            obsLat = coeffDict['phs'][1]
-            decomp = False
-
-        else:
-            print('ERROR: unknown data format, exiting')
-            exit()
+    fDict, visComb, uvwComb, freqs, obsLong, obsLat, LSTangle, imgCoeffs =\
+        SWHT.fileio.read_lofvis(visFiles, opts.station, opts.ant_field,
+            opts.ant_array, opts.deltas, opts.subband, opts.times,
+            opts.override, opts.rcumode, opts.int_time, opts.calfile,
+            opts.column, opts.local_uv)
 
     if opts.uvwplot: # display the total UVW coverage
         fig, ax = SWHT.display.dispVis3D(uvwComb)
@@ -185,6 +101,7 @@ if __name__ == '__main__':
     ####################
     ## Decompose the input visibilities into spherical harmonics visibility coefficeints
     ####################
+    decomp = not imgCoeffs
     if decomp:
         # compute the ideal l_max given the average solid angle angular resolution of an l-mode is Omega ~ 4pi / 2l steradian, and if the PSF is circular theta ~ pi / l radians
         blLen = np.sqrt(uvwComb[:,0,:]**2. + uvwComb[:,1,:]**2. + uvwComb[:,2,:]**2.) # compute the baseline lengths (in meters)
@@ -243,7 +160,7 @@ if __name__ == '__main__':
         res = fov/px[0] # pixel resolution
         print('Generating 2D Hemisphere Image of size (%i, %i)'%(px[0], px[1]))
         print('Resolution(deg):', res*180./np.pi)
-        if local_uv:
+        if opts.local_uv:
             # Put zenith (lcl coordsys) at center of image
             zen = [0., np.pi/2]
             img = SWHT.swht.make2Dimage(imgCoeffs, res, px, phs=zen)
@@ -291,3 +208,6 @@ if __name__ == '__main__':
         if opts.imageMode.startswith('heal'): hp.mollview(m.real, coord='CG')
         plt.show()
 
+
+if __name__ == '__main__':
+    main_cli()

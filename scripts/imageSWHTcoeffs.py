@@ -66,11 +66,7 @@ if __name__ == '__main__':
     ####################
     ## Imaging
     ####################
-    if opts.of is None:
-        if opts.imageMode.startswith('heal'): outFn = 'tempImage.hpx'
-        else: outFn = 'tempImage.pkl'
-    else: outFn = opts.of
-
+    out_file = opts.of
     #TODO: not doing the correct projection
     if opts.imageMode.startswith('2'): # Make a 2D hemispheric image
         fov = opts.fov * (np.pi/180.) # Field of View in radians
@@ -80,20 +76,20 @@ if __name__ == '__main__':
         print('Resolution(deg):', res*180./np.pi)
         img = SWHT.swht.make2Dimage(iImgCoeffs, res, px, phs=[0, np.pi/2])
         fig, ax = SWHT.display.disp2D(img, dmode='abs', cmap='jet')
-
-        # save complex image to pickle file
-        print('Writing image to file %s ...'%outFn, end=' ')
-        SWHT.fileio.writeSWHTImgPkl(outFn, img, fDict, mode='2D')
+        if out_file:
+            # save complex image to pickle file
+            print('Writing image to file %s ...' % out_file, end=' ')
+            SWHT.fileio.writeSWHTImgPkl(out_file, img, fDict, mode='2D')
         print('done')
 
     elif opts.imageMode.startswith('3'): # Make a 3D equal stepped image
         print('Generating 3D Image with %i steps in theta and %i steps in phi'%(opts.pixels, opts.pixels))
         img, phi, theta = SWHT.swht.make3Dimage(iImgCoeffs, dim=[opts.pixels, opts.pixels])
         fig, ax = SWHT.display.disp3D(img, phi, theta, dmode='abs', cmap='jet')
-
-        # save complex image to pickle file
-        print('Writing image to file %s ...'%outFn, end=' ')
-        SWHT.fileio.writeSWHTImgPkl(outFn, [img, phi, theta], fDict, mode='3D')
+        if out_file:
+            # save complex image to pickle file
+            print('Writing image to file %s ...' % out_file, end=' ')
+            SWHT.fileio.writeSWHTImgPkl(out_file, [img, phi, theta], fDict, mode='3D')
         print('done')
 
     elif opts.imageMode.startswith('heal'): # plot healpix and save healpix file using the opts.pkl name
@@ -101,10 +97,10 @@ if __name__ == '__main__':
         # use the healpy.alm2map function as it is much faster, there is a ~1% difference between the 2 functions, this is probably due to the inner workings of healpy
         #m = SWHT.swht.makeHEALPix(iImgCoeffs, nside=opts.pixels)
         m = hp.alm2map(SWHT.util.array2almVec(iImgCoeffs), opts.pixels)
-
-        # save complex image to HEALPix file
-        print('Writing image to file %s ...'%outFn, end=' ')
-        hp.write_map(outFn, np.abs(m), coord='C') #TODO: should this be abs or real?
+        if out_file:
+            # save complex image to HEALPix file
+            print('Writing image to file %s ...' % out_file, end=' ')
+            hp.write_map(out_file, np.abs(m), coord='C') #TODO: should this be abs or real?
         print('done')
     
     elif opts.imageMode.startswith('coeff'): # plot the complex coefficients
@@ -112,6 +108,6 @@ if __name__ == '__main__':
 
     if not (opts.savefig is None): plt.savefig(opts.savefig)
     if not opts.nodisplay:
-        if opts.imageMode.startswith('heal'): hp.mollview(np.abs(m))
+        if opts.imageMode.startswith('heal'): hp.mollview(np.real(m), coord=['C','G'])
         plt.show()
 

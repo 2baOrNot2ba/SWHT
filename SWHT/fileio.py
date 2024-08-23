@@ -489,7 +489,7 @@ def readACC(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
                                      fDict['ts']-np.array(tDeltas),
                                      local_uv=local_uv)
 
-    return vis, uvw, freqs, [obsLat, obsLong, LSTangle]
+    return vis, uvw, freqs, [obsLat, obsLong, LSTangle], nants
 
 def readXST(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
     """Return the visibilites and UVW coordinates from a LOFAR XST format file
@@ -552,7 +552,7 @@ def readXST(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
                                      fDict['ts']-np.array(tDeltas),
                                      local_uv=local_uv)
 
-    return vis, uvw, freqs, [obsLat, obsLong, LSTangle]
+    return vis, uvw, freqs, [obsLat, obsLong, LSTangle], nants
 
 def readKAIRAXST(fn, fDict, lofarStation, sbs, calTable=None, times='0',
                  local_uv=False):
@@ -617,7 +617,7 @@ def readKAIRAXST(fn, fDict, lofarStation, sbs, calTable=None, times='0',
                                      fDict['ts']-np.array(tDeltas),
                                      local_uv=local_uv)
 
-    return vis, uvw, freqs, [obsLat, obsLong, LSTangle]
+    return vis, uvw, freqs, [obsLat, obsLong, LSTangle], nants
 
 # TODO: add option to not apply rotation, useful for standard FT imaging
 def readMS(fn, sbs, column='DATA'):
@@ -679,46 +679,98 @@ def readMS(fn, sbs, column='DATA'):
 
     return np.transpose(vis, (2,0,1)), uvwRotRepeat, freqs, [obsLat, obsLong, LSTangle]
 
-    #nants = ants.shape[0]
-    #ncorrs = nants*(nants+1)/2
-    #nints = ts.shape[1]
-    #uvw = np.zeros((nints, ncorrs, 3, len(sbs)), dtype=float)
-    #vis = np.zeros((4, nints, ncorrs, len(sbs)), dtype=complex) # 4 polarizations: xx, xy, yx, yy
-    #for sbIdx, sb in enumerate(sbs):
-    #    for tIdx in np.arange(nints):
-    #        obs.epoch = ts[sbIdx, tIdx]
-    #        obs.date = ts[sbIdx, tIdx]
+import SWHT
 
-    #        LSTangle = obs.sidereal_time() # radians
-    #        print 'LST:',  LSTangle, 'Dec:', obs.lat
+def read_lofvis(vis_files, station, ant_field, ant_array, deltas, subband, times,
+            override, rcumode, int_time, calfile, column, local_uv=False):
+    dataFmt = None
+    if (not (station is None)) or (not (ant_field is None)): # If using LOFAR data, get station information
+        lofarStation = SWHT.lofarConfig.getLofarStation(name=station,
+                                affn=ant_field, aafn=ant_array, deltas=deltas)
+        antGains = None # Setup variable so that the gain table isn't re-read for every file if used
+        if lofarStation.name=='KAIRA': dataFmt='KAIRA'
+    # parse subbands
+    sbs = np.array(SWHT.util.convert_arg_range(subband))
 
-    #        # Compute baselines in XYZ
-    #        antPosRep = np.repeat(ants[:,0,:], nants, axis=0).reshape((nants, nants, 3)) # ants is of the form [nants, npol, 3], assume pols are at the same position
-    #        xyz = util.vectorize(antPosRep - np.transpose(antPosRep, (1, 0, 2)))
+    # setup variables for combined visibilities and uvw samples
+    visComb = np.array([]).reshape(4, 0, len(sbs))
+    uvwComb = np.array([]).reshape(0, 3, len(sbs))
+    imgCoeffs = None
 
-    #        # Rotation matricies for XYZ -> UVW transform
-    #        dec = float(np.pi/2.) # set the north pole to be dec 90, thus the dec rotation matrix below is not really needed
-    #        decRotMat = np.array([  [1.,              0.,          0.],
-    #                                [0.,     np.sin(dec), np.cos(dec)],
-    #                                [0., -1.*np.cos(dec), np.sin(dec)]]) #rotate about x-axis
-    #        ha = float(LSTangle) - 0. # Hour Angle in reference to longitude/RA=0
-    #        haRotMat = np.array([   [    np.sin(ha), np.cos(ha), 0.],
-    #                                [-1.*np.cos(ha), np.sin(ha), 0.],
-    #                                [0.,             0.,         1.]]) #rotate about z-axis
-    #        rotMatrix = np.dot(decRotMat, haRotMat)
+    for vid, visFn in enumerate(vis_files):
+        print('Using %s (%i/%i)'%(visFn, vid+1, len(vis_files)))
+        fDict = SWHT.fileio.parse(visFn, fmt=dataFmt)
 
-    #        uvw[tIdx, :, :, sbIdx] = np.dot(rotMatrix, xyz.T).T
+        # Pull out the visibility data in a (u,v,w) format
+        if fDict['fmt']=='acc': # LOFAR station all subbands ACC file visibilities
+            fDict['rcu'] = rcumode # add the RCU mode to the meta data of an ACC file
+            fDict['sb'] = sbs # select subbands to use
+            fDict['int'] = int_time # set integration length (usually 1 second)
 
-    #        # split up polarizations, vectorize the correlation matrix, and drop the lower triangle
-    #        vis[0, tIdx, :, sbIdx] = util.vectorize(corrMatrix[sbIdx, tIdx, 0::2, 0::2])
-    #        vis[1, tIdx, :, sbIdx] = util.vectorize(corrMatrix[sbIdx, tIdx, 1::2, 0::2])
-    #        vis[2, tIdx, :, sbIdx] = util.vectorize(corrMatrix[sbIdx, tIdx, 0::2, 1::2])
-    #        vis[3, tIdx, :, sbIdx] = util.vectorize(corrMatrix[sbIdx, tIdx, 1::2, 1::2])
+            vis, uvw, freqs, obsInfo, nants = SWHT.fileio.readACC(visFn, fDict,
+                lofarStation, sbs, calTable=calfile, local_uv=local_uv)
+            [obsLat, obsLong, LSTangle] = obsInfo
 
-    #vis = np.reshape(vis, (vis.shape[0], vis.shape[1]*vis.shape[2], vis.shape[3])) 
-    #uvw = np.reshape(uvw, (uvw.shape[0]*uvw.shape[1], uvw.shape[2], uvw.shape[3])) 
+            # add visibilities to previously processed files
+            visComb = np.concatenate((visComb, vis), axis=1)
+            uvwComb = np.concatenate((uvwComb, uvw), axis=0)
 
-    #return vis, uvw, LSTangle
+        elif fDict['fmt']=='xst': # LOFAR XST format visibilities
+            if override: # Override XST filename metadata
+                fDict['rcu'] = rcumode
+                fDict['sb'] = sbs
+                fDict['int'] = int_time
+            else:
+                sbs = fDict['sb']
+
+            vis, uvw, freqs, obsInfo, nants = SWHT.fileio.readXST(visFn, fDict,
+                    lofarStation, sbs, calTable=calfile, local_uv=local_uv)
+            [obsLat, obsLong, LSTangle] = obsInfo
+
+            # add visibilities to previously processed files
+            visComb = np.concatenate((visComb, vis), axis=1)
+            uvwComb = np.concatenate((uvwComb, uvw), axis=0)
+
+        elif fDict['fmt']=='KAIRA': # KAIRA LOFAR XST format visibilities
+            if override: # Override XST filename metadata
+                fDict['rcu'] = rcumode
+                fDict['sb'] = sbs
+                fDict['int'] = int_time
+            else:
+                sbs = fDict['sb']
+
+            vis, uvw, freqs, obsInfo = SWHT.fileio.readKAIRAXST(visFn, fDict,
+                        lofarStation, sbs, times=times, local_uv=local_uv)
+            [obsLat, obsLong, LSTangle] = obsInfo
+
+            # add visibilities to previously processed files
+            visComb = np.concatenate((visComb, vis), axis=1)
+            uvwComb = np.concatenate((uvwComb, uvw), axis=0)
+
+        elif fDict['fmt']=='ms': # MS-based visibilities
+            fDict['sb'] = sbs
+
+            vis, uvw, freqs, obsInfo = SWHT.fileio.readMS(visFn, sbs, column=column)
+            [obsLat, obsLong, LSTangle] = obsInfo
+
+            # add visibilities to previously processed files
+            visComb = np.concatenate((visComb, vis), axis=1)
+            uvwComb = np.concatenate((uvwComb, uvw), axis=0)
+
+        elif fDict['fmt']=='pkl':
+            print('Loading Image Coefficients file:', visFn)
+            coeffDict = SWHT.fileio.readCoeffPkl(visFn)
+            imgCoeffs = coeffDict['coeffs']
+            LSTangle = coeffDict['lst']
+            obsLong = coeffDict['phs'][0]
+            obsLat = coeffDict['phs'][1]
+
+        else:
+            raise ValueError('ERROR: unknown data format, exiting')
+
+    return (fDict, visComb, uvwComb, freqs, obsLong, obsLat, LSTangle,
+            imgCoeffs)
+
 
 if __name__ == '__main__':
     print('Running test cases...')
