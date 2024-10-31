@@ -364,7 +364,10 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts, local_uv=False):
 
     for sbIdx, sb in enumerate(sbs):
         for tIdx in np.arange(nints):
-            _uvw = util.pos2uvw(ants, ts[sbIdx, tIdx])
+            if local_uv:
+                _uvw = util.pos2uv_flat(ants)
+            else:
+                _uvw = util.pos2uvw(ants, ts[sbIdx, tIdx])
             uvw[tIdx, :, :, sbIdx] = _uvw
 
             # split up polarizations, vectorize the correlation matrix, and drop the lower triangle
