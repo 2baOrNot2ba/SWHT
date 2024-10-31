@@ -245,7 +245,7 @@ def pos2uv_flat(antpos):
     # Third rotate around z so Easting is along (final) x
     _r_xy90 = np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]])
     rot_mat = _r_xy90 @ _ry @ _rz
-    uv = rot_mat @ baselines
+    uv = baselines @ rot_mat.T
     return uv
 
 
