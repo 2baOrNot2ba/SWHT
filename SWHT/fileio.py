@@ -247,7 +247,7 @@ def lofarXST(fn, sb, nantpol, antGains=None):
         sbCorrMatrix: correlation matrix from each subband [1, 1, nantpol, nantpol] for consistency with lofarACCSelectSbs()
         tDeltas: 2D array [1, 1], time offset from end of file timestep, set to 0 but kept for consistency with lofarACCSelectSbs()
     """
-    corrMatrix = np.fromfile(fn, dtype='complex').reshape(1, nantpol, nantpol) #read in the correlation matrix
+    corrMatrix = np.fromfile(fn, dtype='complex').reshape(-1, nantpol, nantpol) #read in the correlation matrix
     if antGains is None:
         sbCorrMatrix = corrMatrix[np.newaxis, ...] # shape (1, 1, nantpol, nantpol)
     else: # Apply Gains
