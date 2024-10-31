@@ -364,59 +364,8 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts, local_uv=False):
 
     for sbIdx, sb in enumerate(sbs):
         for tIdx in np.arange(nints):
-            #TODO: using a reference Obs emperically works, but I can't quite justify it yet
-            #TODO: using a reference Obs probably breaks the FT script, check if there is another roation needed
-            refGST = lofarObserver(0., 0., 0., ts[sbIdx, tIdx]) # create an observatory at (lat,long)=(0,-90) to get the sidereal time at the reference position, this is along the Y axis I believe
-            GSTangle = refGST.sidereal_time()
-
-            #obs.epoch = ts[sbIdx, tIdx]
-            #obs.date = ts[sbIdx, tIdx]
-
-            LSTangle = obs.sidereal_time() # radians
-            print('LST:',  LSTangle, 'Dec:', obs.lat, 'long:', obs.lon)
-
-            # Compute baselines in XYZ
-            antPosRep = np.repeat(ants[:,0,:], nants, axis=0).reshape((nants, nants, 3)) # ants is of the form [nants, npol, 3], assume pols are at the same position
-            xyz = util.vectorize(antPosRep - np.transpose(antPosRep, (1, 0, 2)))
-
-            if local_uv:
-                # Compute local UV coord sys by first estimating normal to
-                # xyz (uvw) array, using the fact that its normal vec is a
-                # null space vector.
-                _u_svd, _d_svd, _vt_svd = np.linalg.svd(xyz)
-                nrmvec = -_vt_svd[2,:]/np.linalg.norm(_vt_svd[2,:])
-                lon_nrm = np.arctan2(nrmvec[1], nrmvec[0])
-                lat_nrm = np.arcsin(nrmvec[2])
-                # Transform by rotations xyz to local UV crd sys, which has
-                # normal along its z-axis and long-axis along x-axis:
-                # First rotate around z so nrmvec x is in (+x,+z) quadrant
-                # (this means Easting is normal to longitude 0 meridian plane)
-                _rz = np.array([[np.cos(lon_nrm), np.sin(lon_nrm), 0.],
-                                [-np.sin(lon_nrm), np.cos(lon_nrm), 0.],
-                                [0., 0., 1.]])
-                # Second rotate around y until normal vec is along z (NCP)
-                _tht = (np.pi/2 - lat_nrm)
-                _ry = np.array([[np.cos(_tht), 0., -np.sin(_tht)],
-                                [0., 1., 0.],
-                                [+np.sin(_tht), 0., np.cos(_tht)]])
-                # Third rotate around z so Easting is along (final) x
-                _r_xy90 = np.array([[0,1,0],[-1,0,0],[0,0,1]])
-                rotMatrix = _r_xy90 @ _ry @ _rz
-            else:
-                # Rotation matricies for XYZ -> UVW transform
-                dec = np.pi / 2.  # set the north pole to be dec 90,
-                                  # thus the dec rotation matrix below is not really needed
-                decRotMat = np.array([[1., 0., 0.],
-                                      [0.,  np.sin(dec), np.cos(dec)],
-                                      [0., -np.cos(dec), np.sin(dec)]])
-                ha = float(GSTangle) - 0.  # Hour Angle in reference to longitude/RA=0
-                print('HA',np.rad2deg(ha))
-                haRotMat = -np.array([[np.cos(ha), -np.sin(ha), 0.],
-                                      [np.sin(ha),  np.cos(ha), 0.],
-                                      [0., 0., -1.]])  # rotate about z-axis, xy-flip
-                rotMatrix = np.dot(decRotMat, haRotMat)
-
-            uvw[tIdx, :, :, sbIdx] = np.dot(rotMatrix, xyz.T).T
+            _uvw = util.pos2uvw(ants, ts[sbIdx, tIdx])
+            uvw[tIdx, :, :, sbIdx] = _uvw
 
             # split up polarizations, vectorize the correlation matrix, and drop the lower triangle
             vis[0, tIdx, :, sbIdx] = util.vectorize(corrMatrix[sbIdx, tIdx, 0::2, 0::2])
@@ -428,7 +377,7 @@ def lofarGenUVW(corrMatrix, ants, obs, sbs, ts, local_uv=False):
     uvw = np.reshape(uvw, (uvw.shape[0]*uvw.shape[1], uvw.shape[2], uvw.shape[3])) 
 
     #TODO: i don't think we need to return the LST angle
-    return vis, uvw, LSTangle
+    return vis, uvw, 0.
 
 def readACC(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
     """Return the visibilites and UVW coordinates from a LOFAR station ACC file
