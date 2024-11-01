@@ -129,7 +129,7 @@ def swht_visibilities(args, opts):
         if polMode=='I': polVisComb = visComb[0] + visComb[3]
         elif polMode=='Q': polVisComb = visComb[0] - visComb[3]
         elif polMode=='U': polVisComb = visComb[1] + visComb[2]
-        elif polMode=='V': polVisComb = 1j * np.conj(visComb[1] - visComb[2]) #flip imaginary and real
+        elif polMode=='V': polVisComb = 1j * (np.conj(visComb[1]) - visComb[2]) #flip imaginary and real
         elif polMode=='XX': polVisComb = visComb[0]
         elif polMode=='XY': polVisComb = visComb[1]
         elif polMode=='YX': polVisComb = visComb[2]
