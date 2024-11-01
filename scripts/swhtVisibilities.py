@@ -145,13 +145,17 @@ def swht_visibilities(args, opts):
     ####################
     ## Imaging
     ####################
-    if opts.of is None:
-        if opts.imageMode.startswith('heal'): 
-            outFn = 'tempImage.hpx'
-            if os.path.exists(outFn):
-                os.remove(outFn)
-        else: outFn = 'tempImage.pkl'
-    else: outFn = opts.of
+    if opts.of is not None:
+        if opts.imageMode.startswith('heal'):
+            healpix_image_suffix = '_image.hpx'
+            if not opts.of.endswith(healpix_image_suffix):
+                opts.of += healpix_image_suffix
+        else:
+            pkl_image_suffix = '_image.pkl'
+            if not opts.of.endswith(pkl_image_suffix):
+                opts.of += pkl_image_suffix
+        if os.path.exists(opts.of):
+            os.remove(opts.of)
 
     #TODO: not doing the correct projection
     if opts.imageMode.startswith('2'): # Make a 2D hemispheric image
@@ -174,9 +178,10 @@ def swht_visibilities(args, opts):
         fig, ax = SWHT.display.disp2D(img, dmode='abs', cmap='jet',
                                       azi_north=True)
 
-        # save complex image to pickle file
-        print('Writing image to file %s ...'%outFn, end=' ')
-        SWHT.fileio.writeSWHTImgPkl(outFn, img, fDict, mode='2D')
+        if opts.of:
+            # save complex image to pickle file
+            print('Writing image to file %s ...'%opts.of, end=' ')
+            SWHT.fileio.writeSWHTImgPkl(opts.of, img, fDict, mode='2D')
         print('done')
 
     elif opts.imageMode.startswith('3'): # Make a 3D equal stepped image
@@ -184,9 +189,10 @@ def swht_visibilities(args, opts):
         img, phi, theta = SWHT.swht.make3Dimage(imgCoeffs, dim=[opts.pixels, opts.pixels])
         fig, ax = SWHT.display.disp3D(img, phi, theta, dmode='abs', cmap='jet')
 
-        # save complex image to pickle file
-        print('Writing image to file %s ...'%outFn, end=' ')
-        SWHT.fileio.writeSWHTImgPkl(outFn, [img, phi, theta], fDict, mode='3D')
+        if opts.of:
+            # save complex image to pickle file
+            print('Writing image to file %s ...'%opts.of, end=' ')
+            SWHT.fileio.writeSWHTImgPkl(opts.of, [img, phi, theta], fDict, mode='3D')
         print('done')
 
     elif opts.imageMode.startswith('heal'): # plot healpix and save healpix file using the opts.pkl name
@@ -195,9 +201,10 @@ def swht_visibilities(args, opts):
         #m = SWHT.swht.makeHEALPix(imgCoeffs, nside=opts.pixels) # TODO: a rotation issue
         m = hp.alm2map(SWHT.util.array2almVec(imgCoeffs), opts.pixels) # TODO: a rotation issue
 
-        # save complex image to HEALPix file
-        print('Writing image to file %s ...'%outFn, end=' ')
-        hp.write_map(outFn, m.real, coord='C') # only writing the real component, this should be fine, maybe missing some details, but you know, the sky should be real.
+        if opts.of:
+            # save complex image to HEALPix file
+            print('Writing image to file %s ...'%opts.of, end=' ')
+            hp.write_map(opts.of, m.real, coord='C') # only writing the real component, this should be fine, maybe missing some details, but you know, the sky should be real.
         print('done')
     
     elif opts.imageMode.startswith('coeff'): # plot the complex coefficients
@@ -205,7 +212,7 @@ def swht_visibilities(args, opts):
 
     if not (opts.savefig is None): plt.savefig(opts.savefig)
     if not opts.nodisplay:
-        if opts.imageMode.startswith('heal'): hp.mollview(m.real, coord='CG')
+        if opts.imageMode.startswith('heal'): hp.cartview(m.real, coord='CG')
         plt.show()
 
 
