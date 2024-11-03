@@ -113,7 +113,7 @@ if __name__ == '__main__':
         if opts.obslat > 0.:
             theta_horz = 180 - opts.obslat
         else:
-            theta_horz = 180 + opts.obslat
+            theta_horz = -opts.obslat
         horizon_ma = hp.query_strip(nside, np.deg2rad(theta_horz - wl),
                                 np.deg2rad(theta_horz + 2 * wl), inclusive=True)
         m[horizon_ma] = hp.pixelfunc.UNSEEN
