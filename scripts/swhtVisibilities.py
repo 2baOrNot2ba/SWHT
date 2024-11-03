@@ -77,6 +77,8 @@ def main_cli():
         help = 'KAIRA ONLY: Select which integration(s) to image, can use a[seconds] to average, d[step size] to decimate, of a specific range of integrations similar to the subband selection option, default:0 (select the first integration of the file)')
     o.add_option('--pol', dest='polMode', default='I',
         help='Polarization selection: I, Q, U, V, XX, YY, XY, YX, default: I')
+    o.add_option('-j', '--jump', dest='jump', default=1, type='int',
+                 help='Jump samples')
     o.add_option('-u', '--uv', dest='local_uv', action='store_true',
                  help='Use local uv coord sys instead of RA-DEC uvw')
     opts, args = o.parse_args(sys.argv[1:])
@@ -93,6 +95,12 @@ def swht_visibilities(args, opts):
             opts.ant_array, opts.deltas, opts.subband, opts.times,
             opts.override, opts.rcumode, opts.int_time, opts.calfile,
             opts.column, opts.local_uv)
+    if fDict['fmt'] == 'npz':
+        sbs = eval(opts.subband)
+        if not isinstance(sbs, list):
+            sbs = [sbs]
+        visComb, uvwComb, freqs, obsLong, obsLat, LSTangle, nants \
+           = SWHT.fileio.readNPZ(visFiles[0], sbs, jump=opts.jump, local_uv=opts.local_uv)
 
     if opts.uvwplot: # display the total UVW coverage
         fig, ax = SWHT.display.dispVis3D(uvwComb)

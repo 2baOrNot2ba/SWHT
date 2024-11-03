@@ -73,6 +73,8 @@ def parse(fn, fmt=None):
     elif fn.lower().endswith('coefs.hpx') or fmt=='coefs.hpx':
         # file is a set of SWHT image coefficients in healpy alm format
         fDict['fmt'] = 'coefs.hpx'
+    elif fn.lower().endswith('npz') or fmt=='npz':
+        fDict['fmt'] = 'npz'
     else:
         # unknown data format, returns warning
         fDict['fmt'] = -1
@@ -236,10 +238,11 @@ def lofarACCSelectSbs(fn, sbs, nchan, nantpol, intTime, antGains=None):
 
     return sbCorrMatrix, tDeltas
 
-def lofarXST(fn, sb, nantpol, antGains=None):
+def lofarXST(fn, sb, integration, nantpol, antGains=None):
     """Read in correlation matrix from a XST file
     fn: string, XST filename
     sb: [int], subband ID, 1 element list for consistency with lofarACCSelectSbs()
+    integration: integration time in seconds.
     nantpol: int, number of antenna-polarizations
     antGains: antenna gains from lofarConfig.readCalTable()
 
@@ -255,7 +258,9 @@ def lofarXST(fn, sb, nantpol, antGains=None):
         sbVisGains = np.dot(sbAntGains, np.conj(sbAntGains.T))
         sbCorrMatrix = np.multiply(sbVisGains, corrMatrix) # shape (1, nantpol, nantpol)
         sbCorrMatrix = np.reshape(sbCorrMatrix, (1, 1, nantpol, nantpol)) # add integration axis
-    tDeltas = [datetime.timedelta(0, 0)] # no time offset
+    nrsamps = corrMatrix.shape[0]
+    tDeltas = [tic*datetime.timedelta(seconds=int(integration))
+               for tic in range(nrsamps)]  # time offsets
 
     tDeltas = np.array(tDeltas)[np.newaxis] # put in the shape [Nsubbands, Nints]
 
@@ -490,7 +495,7 @@ def readXST(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
     # get correlation matrix for subbands selected
     nantpol = nants * npols
     print('Reading in visibility data file ...', end=' ')
-    corrMatrix, tDeltas = lofarXST(fn, fDict['sb'], nantpol, antGains)
+    corrMatrix, tDeltas = lofarXST(fn, fDict['sb'], fDict['int'], nantpol, antGains)
     print('done')
     
     # create station observer
@@ -501,7 +506,7 @@ def readXST(fn, fDict, lofarStation, sbs, calTable=None, local_uv=False):
 
     # get the UVW and visibilities for the different subbands
     vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, obs, sbs,
-                                     fDict['ts']-np.array(tDeltas),
+                                     fDict['ts']+np.array(tDeltas),
                                      local_uv=local_uv)
 
     return vis, uvw, freqs, [obsLat, obsLong, LSTangle], nants
@@ -631,6 +636,75 @@ def readMS(fn, sbs, column='DATA'):
 
     return np.transpose(vis, (2,0,1)), uvwRotRepeat, freqs, [obsLat, obsLong, LSTangle]
 
+
+def readNPZ(fn, sbs=[0], jump=1, local_uv=None):
+    nants = 96
+
+    # Load dataset
+    ds = np.load(fn)
+    ldattype = ds['datatype']
+
+    # Create times
+    sdt = datetime.datetime.utcfromtimestamp(
+        (ds['start_datetime'] - np.datetime64('1970-01-01T00:00:00Z'))
+        / np.timedelta64(1, 's'))
+    delta_secs = ds['delta_secs']
+    if ldattype == 'acc':
+        delta_secs = delta_secs[:, sbs]
+    delta_secs = delta_secs.flatten()
+    ts = [sdt + datetime.timedelta(seconds=int(dt)) for dt in delta_secs]
+
+    # Add subband axis:
+    freq_dep = ds['frequencies']
+    freq_all = np.sort(np.unique(freq_dep))
+    print(freq_dep.shape)
+    freqs = freq_all[sbs]
+    if not isinstance(freqs, np.ndarray):
+        freqs = np.asarray(freqs)
+    ts = np.asarray(ts)[np.newaxis]
+
+    # Create visibility matrices
+    arrfiles = [f for f in ds.files if f.startswith('arr_')]
+    # Try to avoid loading in every file fully by skipping over jump samples
+    # so compute a list indices to extract from all arr 'jumpsmps'
+    # as if all the arrs were concatenated.
+    if ldattype == 'xst':
+        nrsmps_in_file = ds['arr_0'].shape[0]
+        jumpsmps = np.asarray(range(nrsmps_in_file*len(arrfiles))[::jump])
+        nrsmps = 0
+    _corrmatarray = np.empty((0,)+ds['arr_0'].shape[1:])  # Empty arr to append2
+    for arridx, arrfile in enumerate(arrfiles):
+        if ldattype == 'acc':
+            if arridx % jump:
+                continue
+        _arr = ds[arrfile]
+        print(_arr.shape)
+        if ldattype == 'acc':
+            _arr = _arr[sbs]
+        else:
+            # Jump over 'jump' samples taking into account previous file samples
+            jumpsmps_in_file = jumpsmps[(jumpsmps >= nrsmps)
+                                    & (jumpsmps < nrsmps+nrsmps_in_file)]-nrsmps
+            _arr = _arr[jumpsmps_in_file]
+            nrsmps += nrsmps_in_file
+        _corrmatarray = np.append(_corrmatarray, _arr, axis=0)
+    corshp = _corrmatarray.shape
+    corrMatrix = np.zeros((len(freqs), corshp[0], corshp[1] * corshp[3],
+                           corshp[2] * corshp[4]), complex)
+    corrMatrix[0, :, 0::2, 0::2] = _corrmatarray[..., 0, 0, :, :]
+    corrMatrix[0, :, 0::2, 1::2] = _corrmatarray[..., 0, 1, :, :]
+    corrMatrix[0, :, 1::2, 0::2] = _corrmatarray[..., 1, 0, :, :]
+    corrMatrix[0, :, 1::2, 1::2] = _corrmatarray[..., 1, 1, :, :]
+    ants = ds['positions'][:, np.newaxis, :]
+    print('corr',ts.shape)
+    vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, None,
+                                     sbs, ts[:, ::jump], local_uv=local_uv)
+    obsLong = 0.
+    obsLat = 0.
+    LSTangle = 0.
+    return vis, uvw, freqs, obsLong, obsLat, LSTangle, nants
+
+
 import SWHT
 
 def read_lofvis(vis_files, station, ant_field, ant_array, deltas, subband, times,
@@ -717,6 +791,14 @@ def read_lofvis(vis_files, station, ant_field, ant_array, deltas, subband, times
             obsLong = coeffDict['phs'][0]
             obsLat = coeffDict['phs'][1]
 
+        elif fDict['fmt'] == 'npz':
+            #vis, uvw, freqs, obsLong, obsLat, LSTangle, nants \
+             #   = SWHT.fileio.readNPZ(visFn, calTable=calfile, local_uv=local_uv)
+            # Defer till after returning
+            freqs = 0.
+            obsLong = 0.
+            obsLat = 0.
+            LSTangle = 0.
         else:
             raise ValueError('ERROR: unknown data format, exiting')
 
