@@ -29,6 +29,8 @@ if __name__ == '__main__':
         help='Max flux value, default: None')
     o.add_option('--min', dest='min', default=None, type='float',
         help='Min flux value, default: None')
+    o.add_option('-l', '--obslat', dest='obslat', default=None, type=float,
+        help='On map, mark horizon of observation latitude')
     o.add_option('--dec_min', dest='dec_min', default=None, type='float',
         help='Min declination to plot, in degrees, only works propertly if the input map is in Celestial coordinates, default: None')
     o.add_option('--dec_max', dest='dec_max', default=None, type='float',
@@ -106,6 +108,15 @@ if __name__ == '__main__':
         theta_max = (dec_max / 180.) * np.pi
         ring_max = hp.pixelfunc.ang2pix(nside, theta_max, 0.)
         m[:ring_max] = hp.pixelfunc.UNSEEN
+    if opts.obslat:
+        wl = 0.1
+        if opts.obslat > 0.:
+            theta_horz = 180 - opts.obslat
+        else:
+            theta_horz = 180 + opts.obslat
+        horizon_ma = hp.query_strip(nside, np.deg2rad(theta_horz - wl),
+                                np.deg2rad(theta_horz + 2 * wl), inclusive=True)
+        m[horizon_ma] = hp.pixelfunc.UNSEEN
 
     # replace nan values with zero
     if opts.fill: m = np.nan_to_num(m)
