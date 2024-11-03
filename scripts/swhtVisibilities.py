@@ -220,7 +220,16 @@ def swht_visibilities(args, opts):
 
     if not (opts.savefig is None): plt.savefig(opts.savefig)
     if not opts.nodisplay:
-        if opts.imageMode.startswith('heal'): hp.cartview(m.real, coord='CG')
+        nside = hp.pixelfunc.get_nside(m)
+        wl = 0.1
+        if obsLat >= 0.:
+            theta_horz = 180.0 - obsLat
+        else:
+            theta_horz = -obsLat
+        horizon_ma = hp.query_strip(nside, np.deg2rad(theta_horz - wl),
+                                    np.deg2rad(theta_horz + 2 * wl), inclusive=True)
+        m[horizon_ma] = hp.pixelfunc.UNSEEN
+        if opts.imageMode.startswith('heal'): hp.mollview(m.real, coord='CG')
         plt.show()
 
 

@@ -638,8 +638,35 @@ def readMS(fn, sbs, column='DATA'):
 
 
 def readNPZ(fn, sbs=[0], jump=1, local_uv=None):
-    nants = 96
+    """
+    Parameters
+    ----------
+    fn: str
+        Filename of numpy zipped data
+    sbs: list
+        Subbands list.
+    jump: int
+        Skip 'jump' samples.
+    local_uv: bool
+        Use topocentric UV coord. sys. or not.
 
+    Returns
+    -------
+    vis:
+        Visibility array
+    uvw:
+        UVW baseline postions
+    freqs:
+        Frequencies
+    obsLong:
+        Observation longitude
+    obsLat:
+        Observation latitude
+    LSTangle:
+        Local sidereal angle
+    nants:
+        Number of antennas
+    """
     # Load dataset
     ds = np.load(fn)
     ldattype = ds['datatype']
@@ -657,7 +684,6 @@ def readNPZ(fn, sbs=[0], jump=1, local_uv=None):
     # Add subband axis:
     freq_dep = ds['frequencies']
     freq_all = np.sort(np.unique(freq_dep))
-    print(freq_dep.shape)
     freqs = freq_all[sbs]
     if not isinstance(freqs, np.ndarray):
         freqs = np.asarray(freqs)
@@ -678,7 +704,6 @@ def readNPZ(fn, sbs=[0], jump=1, local_uv=None):
             if arridx % jump:
                 continue
         _arr = ds[arrfile]
-        print(_arr.shape)
         if ldattype == 'acc':
             _arr = _arr[sbs]
         else:
@@ -696,12 +721,11 @@ def readNPZ(fn, sbs=[0], jump=1, local_uv=None):
     corrMatrix[0, :, 1::2, 0::2] = _corrmatarray[..., 1, 0, :, :]
     corrMatrix[0, :, 1::2, 1::2] = _corrmatarray[..., 1, 1, :, :]
     ants = ds['positions'][:, np.newaxis, :]
-    print('corr',ts.shape)
     vis, uvw, LSTangle = lofarGenUVW(corrMatrix, ants, None,
                                      sbs, ts[:, ::jump], local_uv=local_uv)
-    obsLong = 0.
-    obsLat = 0.
+    obsLat, obsLong, h = ecef.ecef2geodetic(*np.mean(ants, axis=(0,1)))
     LSTangle = 0.
+    nants = ants.shape[-1]
     return vis, uvw, freqs, obsLong, obsLat, LSTangle, nants
 
 
